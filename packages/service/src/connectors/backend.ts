@@ -1,9 +1,8 @@
 import { Context, type Effect, Schema } from "effect";
 import type { CatalogEntry } from "./catalog.ts";
 
-// What a connector's server must offer the gateway (connectors blueprint, Backends). The Streamable-HTTP adapter
-// lives in `backends/httpMcp.ts`; the stdio one comes with the second half of blueprint step 4; every test until
-// then uses the scripted fake in `test/fixtures/`.
+// What a connector's server must offer the gateway (connectors blueprint, Backends).
+// The Streamable-HTTP adapter lives in `backends/httpMcp.ts`; the stdio one comes with the second half of blueprint step 4; every test until then uses the scripted fake in `test/fixtures/`.
 
 /** One tool as its server lists it; the catalog, not this, decides how it is classified. */
 export type BackendTool = {
@@ -14,18 +13,18 @@ export type BackendTool = {
 };
 
 /**
- * The public class of a backend failure: `Disconnected` (credentials rejected, permission refused), `Unreachable`, `InvalidArguments`
- * (the thread's own malformed call) and `Failed` (anything else). Only the class leaves the gateway.
+ * The public class of a backend failure: `Disconnected` (credentials rejected, permission refused), `Unreachable`, `InvalidArguments` (the thread's own malformed call) and `Failed` (anything else).
+ * Only the class leaves the gateway.
  */
 export const ConnectorErrorClass = Schema.Literals(["Disconnected", "Unreachable", "InvalidArguments", "Failed"]);
 export type ConnectorErrorClass = typeof ConnectorErrorClass.Type;
 
 /**
- * A server's failure. `upstream` is the server's own words, kept for no one: it is never forwarded to a thread, stored or
- * logged, since a server may echo the secret it was given.
+ * A server's failure. `upstream` is the server's own words, kept for no one: it is never forwarded to a thread, stored or logged, since a server may echo the secret it was given.
  */
 export class BackendFailure extends Schema.TaggedError<BackendFailure>()("BackendFailure", {
   class: ConnectorErrorClass,
+  httpStatus: Schema.optional(Schema.Number),
   upstream: Schema.String,
 }) {}
 

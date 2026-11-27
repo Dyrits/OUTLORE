@@ -3,8 +3,8 @@ import { SqlClient } from "effect/sql";
 import { capabilities } from "../policy/index.ts";
 import type { ConnectorChoices, Subject, SwitchChoice } from "./availability.ts";
 
-// The connectors' stored choices (connectors blueprint, Stored choices): own tables, written inside the caller's
-// transaction, nothing else in `core/` changed. Callers run the writes in a transaction.
+// The connectors' stored choices (connectors blueprint, Stored choices): own tables, written inside the caller's transaction, nothing else in `core/` changed.
+// Callers run the writes in a transaction.
 
 /** The options a connector keeps: Apple apps' chosen apps. */
 const Options = Schema.Struct({ apps: Schema.optionalKey(Schema.Array(Schema.String)) });
@@ -93,9 +93,8 @@ export const markRemoving = Effect.fnUntraced(function* (connectorId: string) {
 });
 
 /**
- * The last step of a removal: the connector's rows (its choices and tool switches go with it) and its standing
- * permissions. The permissions are those of the connector capability whose pattern begins `<id>/`, compared by prefix with
- * `substr`, since `_` in an id would be a wildcard in `LIKE`.
+ * The last step of a removal: the connector's rows (its choices and tool switches go with it) and its standing permissions.
+ * The permissions are those of the connector capability whose pattern begins `<id>/`, compared by prefix with `substr`, since `_` in an id would be a wildcard in `LIKE`.
  */
 export const deleteConnector = Effect.fnUntraced(function* (connectorId: string) {
   const sql = yield* SqlClient.SqlClient;
@@ -179,8 +178,8 @@ export const hasQuest = Effect.fnUntraced(function* (missionId: string) {
 });
 
 /**
- * Who a thread asks as, read at the time of asking so a quest's move needs no migration: Chronicler's, or its quest with
- * its top thread's realm. Null when the thread does not exist.
+ * Who a thread asks as, read at the time of asking so a quest's move needs no migration: Chronicler's, or its quest with its top thread's realm.
+ * Null when the thread does not exist.
  */
 export const readSubject = Effect.fnUntraced(function* (threadId: string) {
   const sql = yield* SqlClient.SqlClient;
@@ -195,8 +194,8 @@ export const readSubject = Effect.fnUntraced(function* (threadId: string) {
 });
 
 /**
- * Where a quest stands now: its top thread's realm (null for the Borderlands) and whether it is Chronicler's, read at the
- * time of asking so a quest's move needs no migration. Null when the quest does not exist.
+ * Where a quest stands now: its top thread's realm (null for the Borderlands) and whether it is Chronicler's, read at the time of asking so a quest's move needs no migration.
+ * Null when the quest does not exist.
  */
 export const readPlacement = Effect.fnUntraced(function* (missionId: string) {
   const sql = yield* SqlClient.SqlClient;

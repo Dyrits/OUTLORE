@@ -140,5 +140,11 @@ export function useServiceQuery<R extends Request>(client: ServiceClient, reques
     };
   }, [client, key, request === null]);
 
-  return snapshot;
+  const refresh = () => {
+    if (request === null) return;
+    const current = queryCaches.get(client)?.get(key);
+    if (current !== undefined) void loadEntry(client, current);
+  };
+
+  return { ...snapshot, refresh };
 }

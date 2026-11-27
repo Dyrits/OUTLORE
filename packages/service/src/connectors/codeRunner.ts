@@ -12,8 +12,7 @@ import type {
 
 const megabytesOf = (bytes: number) => `${Math.round(bytes / (1024 * 1024))} MB`;
 
-// A program first read as one expression (an arrow function, or a call), then as a function body when that does not
-// parse: models write both, and Cloudflare's own description asks for the first.
+// A program first read as one expression (an arrow function, or a call), then as a function body when that does not parse: models write both, and Cloudflare's own description asks for the first.
 const expressionProgramOf = (code: string) =>
   `(async () => {\nconst __outlore_value = (\n${code}\n);\nreturn typeof __outlore_value === "function" ? await __outlore_value() : await __outlore_value;\n})()`;
 const bodyProgramOf = (code: string) => `(async () => {\n${code}\n})()`;
@@ -45,10 +44,9 @@ type RunState = {
 };
 
 /**
- * Runs the code once in a fresh context of the runtime, resuming with the finished run, and returns what stops it
- * early. The model's JavaScript sees only the ECMAScript built-ins, `console`, and the given functions, each name a
- * global. A call is a promise inside QuickJS that resolves when its Effect ends, so a call that waits for
- * the owner holds no CPU and does not count against the time limit.
+ * Runs the code once in a fresh context of the runtime, resuming with the finished run, and returns what stops it early.
+ * The model's JavaScript sees only the ECMAScript built-ins, `console`, and the given functions, each name a global.
+ * A call is a promise inside QuickJS that resolves when its Effect ends, so a call that waits for the owner holds no CPU and does not count against the time limit.
  */
 export const runOnce = (
   runtime: QuickJSRuntime,

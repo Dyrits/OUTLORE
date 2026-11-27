@@ -4,11 +4,11 @@ import { SqlClient } from "effect/sql";
 import { invalid, notFound } from "../core/index.ts";
 import type { ConnectorChoices, SwitchChoice } from "./availability.ts";
 import { entryOf } from "./catalog.ts";
-import { appleConnectionNeedOf, readStanding, type StateDependencies } from "./connectorState.ts";
+import { appleConnectionNeedOf } from "./connectorNeeds.ts";
+import { readStanding, type StateDependencies } from "./connectorState.ts";
 import { hasRealm, readConnectorRecords, readPlacement } from "./connectorStore.ts";
 
-// What a realm's or a quest's panel reads of the connectors (connectors specification, Where a connector is available):
-// each installed connector's own choice at that level, and what Inherit would give there.
+// What a realm's or a quest's panel reads of the connectors (connectors specification, Where a connector is available): each installed connector's own choice at that level, and what Inherit would give there.
 
 type Level = ConnectorChoiceLevel;
 
@@ -27,8 +27,8 @@ const choicesAt = (level: Level, choices: ConnectorChoices, placementRealmId: st
   } as const;
 };
 
-/** Every installed connector's choice at one level, in install order; one being removed is left out. */
-export const choiceCardsOf = Effect.fnUntraced(function* (dependencies: StateDependencies, level: Level) {
+/** Reads every installed connector's choice at one level, in install order; one being removed is left out. */
+export const readChoiceCards = Effect.fnUntraced(function* (dependencies: StateDependencies, level: Level) {
   const provided = Effect.provideService(SqlClient.SqlClient, dependencies.sql);
   if (level._tag === "Realm" && !(yield* hasRealm(level.realmId).pipe(provided)))
     return yield* notFound("No such realm.");
@@ -51,7 +51,8 @@ export const choiceCardsOf = Effect.fnUntraced(function* (dependencies: StateDep
       isEnabled: record.isEnabled,
       name: entry.name,
       state:
-        standing.isConnected && (entry.apps.length === 0 || appleConnectionNeedOf(dependencies, record) === null)
+        standing.isConnected &&
+        (entry.apps.length === 0 || appleConnectionNeedOf(dependencies.permissions, record) === null)
           ? "Ready"
           : "NeedsConnecting",
     });

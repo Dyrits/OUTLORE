@@ -43,8 +43,14 @@ export const buildAuthorizationUrl = (params: {
   return url.toString();
 };
 
-const callbackSuccessHtml =
-  "<!doctype html><html><body><h1>Signed in to Outlore</h1><p>You can close this tab and return to Outlore.</p></body></html>";
+const oauthErrorCodePattern = /^[a-z0-9_]{1,64}$/;
+
+/** Extracts an RFC 6749 error code when it matches the fixed ASCII vocabulary, never free-text descriptions. */
+export const oauthErrorCodeOf = (raw: string | null): string | null =>
+  raw !== null && oauthErrorCodePattern.test(raw) ? raw : null;
+
+const callbackReceivedHtml =
+  "<!doctype html><html><body><h1>Returning to Outlore</h1><p>Authorization received. Outlore is finishing the sign-in; check the Outlore window for the result.</p></body></html>";
 const callbackFailureHtml =
   "<!doctype html><html><body><h1>Sign-in did not complete</h1><p>You can close this tab and return to Outlore.</p></body></html>";
 
@@ -66,30 +72,36 @@ export const openLoopbackCallback = (expectedState: string, timeoutMillis: numbe
             response.writeHead(404, { "content-type": "text/plain" }).end("Not found");
             return;
           }
-          const error = parsed.searchParams.get("error");
-          if (error !== null) {
-            response.writeHead(400, { "content-type": "text/html; charset=utf-8" }).end(callbackFailureHtml);
-            Deferred.doneUnsafe(
-              outcome,
-              Exit.fail(
-                new OAuthFailure({
-                  kind: "Authorization",
-                  message: "The service refused or cancelled the sign-in.",
-                }),
-              ),
-            );
-            return;
-          }
           const receivedState = parsed.searchParams.get("state");
+          const error = parsed.searchParams.get("error");
           const code = parsed.searchParams.get("code");
           if (receivedState !== expectedState) {
             response.writeHead(400, { "content-type": "text/html; charset=utf-8" }).end(callbackFailureHtml);
+            // A stray `?error=` without the matching state cannot cancel an active sign-in; keep waiting for the real callback.
+            if (error !== null && code === null) return;
             Deferred.doneUnsafe(
               outcome,
               Exit.fail(
                 new OAuthFailure({
                   kind: "StateMismatch",
                   message: "The sign-in callback did not match this request's state.",
+                }),
+              ),
+            );
+            return;
+          }
+          if (error !== null) {
+            const errorCode = oauthErrorCodeOf(error);
+            response.writeHead(400, { "content-type": "text/html; charset=utf-8" }).end(callbackFailureHtml);
+            Deferred.doneUnsafe(
+              outcome,
+              Exit.fail(
+                new OAuthFailure({
+                  kind: "Authorization",
+                  message:
+                    errorCode === null
+                      ? "The service refused or cancelled the sign-in."
+                      : `The service refused or cancelled the sign-in (${errorCode}).`,
                 }),
               ),
             );
@@ -108,7 +120,7 @@ export const openLoopbackCallback = (expectedState: string, timeoutMillis: numbe
             );
             return;
           }
-          response.writeHead(200, { "content-type": "text/html; charset=utf-8" }).end(callbackSuccessHtml);
+          response.writeHead(200, { "content-type": "text/html; charset=utf-8" }).end(callbackReceivedHtml);
           Deferred.doneUnsafe(outcome, Exit.succeed(code));
         });
         listener.once("error", () =>

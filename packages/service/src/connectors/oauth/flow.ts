@@ -7,8 +7,7 @@ import { discoverOAuthMetadata } from "./discovery.ts";
 import type { OAuthSession } from "./session.ts";
 import { OAuthFailure } from "./types.ts";
 
-// End-to-end host-side MCP OAuth 2.1 browser sign-in flow: discovery, ephemeral loopback callback, dynamic client
-// registration, PKCE S256 browser redirect, state verification, and token exchange.
+// End-to-end host-side MCP OAuth 2.1 browser sign-in flow: discovery, ephemeral loopback callback, dynamic client registration, PKCE S256 browser redirect, state verification, and token exchange.
 
 /** Opens a URL in the host's default web browser; replaceable in tests with a loopback browser stand-in. */
 export type BrowserOpener = (url: string) => Effect.Effect<void, OAuthFailure>;
@@ -65,8 +64,8 @@ export const runOAuthSignIn = (
             "This service does not advertise dynamic client registration, so Outlore cannot sign in generically.",
         });
       }
-      const pkce = generatePkce();
-      const state = generateState();
+      const pkce = yield* Effect.sync(generatePkce);
+      const state = yield* Effect.sync(generateState);
       const callback = yield* openLoopbackCallback(state, options.callbackTimeoutMillis ?? 300_000);
       const client = yield* registerDynamicClient(
         discovered.registrationEndpoint,

@@ -1,16 +1,9 @@
-import { Effect } from "effect";
+import { Effect, Semaphore } from "effect";
 import { fieldOf, isRecord, numberFieldOf, textFieldOf } from "../../core/index.ts";
 import type { BackendAuthKind, BackendTool, ConnectorBackend } from "../backend.ts";
 import { redactedOf } from "../connectorErrors.ts";
-import {
-  ask,
-  clientInfo,
-  type HttpTransport,
-  notify,
-  protocolVersion,
-  refuse,
-  sessionExpiredWords,
-} from "./httpMcpTransport.ts";
+import { clientInfo, protocolVersion } from "../mcpClient.ts";
+import { ask, type HttpTransport, notify, refuse, sessionExpiredWords } from "./httpMcpTransport.ts";
 
 // A Streamable-HTTP MCP client (connectors blueprint, Backends): one POST per request, optional session handshake, and fixed-word failures with redacted answers.
 
@@ -53,34 +46,38 @@ export const httpMcpBackend = (
   let sessionId: string | null = null;
   let isInitialized = false;
   let sessionAuth: BackendAuthKind | null = null;
+  const sessionLock = Semaphore.makeUnsafe(1);
   const shouldUseSessionFor = (auth: BackendAuthKind) => transport.shouldUseSession === true || auth === "OAuth";
   const timeoutMillis = options.requestTimeoutMillis ?? 60_000;
 
   /** Performs the MCP Streamable HTTP session handshake when required by the transport or auth mode. */
-  const ensureSession = Effect.fnUntraced(function* (secret: string | null, auth: BackendAuthKind) {
-    if (sessionAuth !== null && sessionAuth !== auth) {
-      sessionId = null;
-      isInitialized = false;
-    }
-    sessionAuth = auth;
-    if (!shouldUseSessionFor(auth) || isInitialized) return;
-    counter += 1;
-    const initialized = yield* ask(
-      transport,
-      "initialize",
-      { capabilities: {}, clientInfo, protocolVersion },
-      secret,
-      null,
-      counter,
-      timeoutMillis,
-      auth,
+  const ensureSession = (secret: string | null, auth: BackendAuthKind) =>
+    sessionLock.withPermit(
+      Effect.gen(function* () {
+        if (sessionAuth !== null && sessionAuth !== auth) {
+          sessionId = null;
+          isInitialized = false;
+        }
+        sessionAuth = auth;
+        if (!shouldUseSessionFor(auth) || isInitialized) return;
+        counter += 1;
+        const initialized = yield* ask(
+          transport,
+          "initialize",
+          { capabilities: {}, clientInfo, protocolVersion },
+          secret,
+          null,
+          counter,
+          timeoutMillis,
+          auth,
+        );
+        const initError = fieldOf(initialized.message, "error");
+        if (initError !== void 0) return yield* Effect.fail(refuse("Failed"));
+        sessionId = initialized.sessionId;
+        yield* notify(transport, "notifications/initialized", secret, sessionId, timeoutMillis, auth);
+        isInitialized = true;
+      }),
     );
-    const initError = fieldOf(initialized.message, "error");
-    if (initError !== void 0) return yield* Effect.fail(refuse("Failed"));
-    sessionId = initialized.sessionId;
-    yield* notify(transport, "notifications/initialized", secret, sessionId, timeoutMillis, auth);
-    isInitialized = true;
-  });
 
   const sendRequest = Effect.fnUntraced(function* (
     method: string,

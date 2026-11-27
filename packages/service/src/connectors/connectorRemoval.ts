@@ -1,19 +1,12 @@
-import type { ApplePermissionStatus } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { type Changes, ServiceFailure } from "../core/index.ts";
+import type { StateDependencies } from "./connectorState.ts";
 import { deleteConnector, readConnectorRecords } from "./connectorStore.ts";
-import type { ToolListing } from "./toolListing.ts";
-import type { VaultPort } from "./vaultPort.ts";
 
 /** Dependencies needed to erase secrets and finish or resume connector removals. */
-export type RemovalDependencies = {
-  readonly bumpPermissionRevision: () => void;
+export type RemovalDependencies = Pick<StateDependencies, "listing" | "permissions" | "sql" | "vault"> & {
   readonly changes: Changes["Service"];
-  readonly listing: ToolListing;
-  readonly permissions: Map<string, Map<string, ApplePermissionStatus>>;
-  readonly sql: SqlClient.SqlClient;
-  readonly vault: VaultPort["Service"];
 };
 
 /** Removes a connector's secrets from the Vault as the second step of removal. */
@@ -33,8 +26,7 @@ export const eraseConnectorSecrets = (dependencies: RemovalDependencies, connect
 /** Deletes a connector's stored rows, permissions, and cached backend as the final step of removal. */
 export const finishConnectorRemoval = (dependencies: RemovalDependencies, connectorId: string) =>
   Effect.gen(function* () {
-    dependencies.bumpPermissionRevision();
-    dependencies.permissions.delete(connectorId);
+    dependencies.permissions.clear(connectorId);
     yield* dependencies.sql.withTransaction(
       deleteConnector(connectorId).pipe(Effect.provideService(SqlClient.SqlClient, dependencies.sql)),
     );

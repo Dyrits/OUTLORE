@@ -1,4 +1,5 @@
 import type { ConnectorCard } from "@outlore/contracts";
+import { useState } from "react";
 import { Text } from "react-native";
 import { canInstallCard, connectorStateLabels, isInstalledCard, remoteOAuthNote } from "../connectors";
 import type { ServiceClient } from "../foundation/client";
@@ -27,9 +28,14 @@ export function ConnectorPanel({
   onOpenVault: () => void;
 }) {
   const isRemote = useIsRemoteHost();
-  const { attempt, isBusy, error } = useAttempt(onChanged);
+  const { attempt, cancel, isBusy, error } = useAttempt(onChanged);
+  const [isSigningIn, setSigningIn] = useState(false);
   const isInstalled = isInstalledCard(card);
   const isRemoving = card.state === "Removing";
+  const cancelSignIn = () => {
+    cancel();
+    setSigningIn(false);
+  };
   return (
     <SettingsCard icon="layers" summary={connectorStateLabels[card.state]} title={card.name}>
       <Text style={styles.muted}>{card.description}</Text>
@@ -40,12 +46,22 @@ export function ConnectorPanel({
           card.usesOAuth === true &&
           (isRemote ? (
             <Text style={styles.muted}>{remoteOAuthNote}</Text>
+          ) : isSigningIn ? (
+            <>
+              <Text style={styles.muted}>Waiting for the browser (up to 5 minutes)…</Text>
+              <Button isPrimary={false} label="Cancel" onPress={cancelSignIn} />
+            </>
           ) : (
             <Button
               isDisabled={isBusy}
               isPrimary={card.state !== "Ready"}
               label={card.state === "Ready" ? "Sign in again" : "Sign in in browser"}
-              onPress={() => attempt(() => client.request({ _tag: "SignInConnector", connectorId: card.id }))}
+              onPress={() => {
+                setSigningIn(true);
+                attempt(() =>
+                  client.request({ _tag: "SignInConnector", connectorId: card.id }).finally(() => setSigningIn(false)),
+                );
+              }}
             />
           ))}
         {isInstalled && !isRemoving && card.secretKinds.length > 0 && (

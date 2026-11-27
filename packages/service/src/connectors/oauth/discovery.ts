@@ -1,5 +1,6 @@
 import { Effect } from "effect";
 import { fieldOf, isRecord, textFieldOf } from "../../core/index.ts";
+import { clientInfo, protocolVersion } from "../mcpClient.ts";
 import { isAllowedOAuthUrl, OAuthFailure, parseWwwAuthenticate } from "./types.ts";
 
 // RFC 9728 Protected Resource Metadata and RFC 8414 / OIDC Authorization Server Metadata discovery for MCP OAuth 2.1.
@@ -70,14 +71,14 @@ const probeChallenge = Effect.fnUntraced(function* (resourceUrl: string, timeout
           method: "initialize",
           params: {
             capabilities: {},
-            clientInfo: { name: "outlore", version: "0.2.7" },
-            protocolVersion: "2025-06-18",
+            clientInfo,
+            protocolVersion,
           },
         }),
         headers: {
           accept: "application/json, text/event-stream",
           "content-type": "application/json",
-          "mcp-protocol-version": "2025-06-18",
+          "mcp-protocol-version": protocolVersion,
         },
         method: "POST",
         redirect: "manual",

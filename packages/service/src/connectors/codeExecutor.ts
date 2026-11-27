@@ -4,8 +4,7 @@ import { newQuickJSWASMModuleFromVariant } from "quickjs-emscripten-core";
 import type { CodeFunctions, CodeLimits, CodeRun } from "./codeRun.ts";
 import { runOnce } from "./codeRunner.ts";
 
-// Code Mode's executor (ADR 0023): the model's JavaScript runs in QuickJS compiled to WebAssembly, one fresh runtime
-// per run, so nothing a run leaves behind reaches the next.
+// Code Mode's executor (ADR 0023): the model's JavaScript runs in QuickJS compiled to WebAssembly, one fresh runtime per run, so nothing a run leaves behind reaches the next.
 
 /** Runs a thread's code with only the functions it is given. */
 export class CodeExecutor extends Context.Service<

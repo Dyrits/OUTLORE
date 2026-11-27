@@ -1,9 +1,9 @@
 import type { CatalogEntry } from "./catalog.ts";
 import { airtableEntry } from "./entries/airtable.ts";
 import { atlassianEntry } from "./entries/atlassian.ts";
-import { awsKnowledgeEntry } from "./entries/aws_knowledge.ts";
+import { awsKnowledgeEntry } from "./entries/awsKnowledge.ts";
 import { cloudflareEntry } from "./entries/cloudflare.ts";
-import { cloudflareDocsEntry } from "./entries/cloudflare_docs.ts";
+import { cloudflareDocsEntry } from "./entries/cloudflareDocs.ts";
 import { context7Entry } from "./entries/context7.ts";
 import { datadogEntry } from "./entries/datadog.ts";
 import { deepwikiEntry } from "./entries/deepwiki.ts";
@@ -28,16 +28,13 @@ import { tavilyEntry } from "./entries/tavily.ts";
 import { todoistEntry } from "./entries/todoist.ts";
 import { vercelEntry } from "./entries/vercel.ts";
 
-// The two connectors Outlore offers first (connectors specification, Composio and Apple apps). The servers are not run
-// by this build: the Composio entry's tools are the seven it publishes on its own page and in its repo (research note,
-// 2026-11-19); the Apple apps entry's tools are classified once the pinned version's listing is read (blueprint step 4,
-// second half), so it names none and therefore offers none yet.
+// Every connector Outlore offers (connectors specification): Composio and Apple's applications on macOS are defined here, and each hosted server has its own file under `entries/`.
+// Composio's tools are the seven it publishes on its own page and in its repo (research note, 2026-11-19); Apple's are classified by exact name from the pinned server version's listing.
+// `defaultCatalog` lists them all in the order the Charter shows them.
 
 /**
- * Composio: the hosted MCP server at `connect.composio.dev/mcp` offers exactly seven meta-tools (documentation/research/
- * composio-mcp-2026-11-19.md), by which a thread reaches any app the owner connected on Composio's own page. The two
- * discovery tools are `Read`, verified pure discovery against the repo's own words; the five that act, connect or run
- * code are `Write`, so each call asks: one search can name a tool that writes, so discovery is where trusting stops.
+ * Composio: the hosted MCP server at `connect.composio.dev/mcp` offers exactly seven meta-tools (documentation/research/composio-mcp-2026-11-19.md), by which a thread reaches any app the owner connected on Composio's own page.
+ * The two discovery tools are `Read`, verified pure discovery against the repo's own words; the five that act, connect or run code are `Write`, so each call asks: one search can name a tool that writes, so discovery is where trusting stops.
  */
 export const composioEntry: CatalogEntry = {
   apps: [],
@@ -96,13 +93,9 @@ export const composioEntry: CatalogEntry = {
 };
 
 /**
- * Apple apps: the Mac's Calendar, Reminders, Notes, Contacts, Mail, Messages and Safari, through the pinned community
- * server (`mcp-icloud@2.1.4`, MIT, `MrGo2/icloud-mcp`; connectors specification, Technical notes), run as a stdio
- * child from the copy vendored with the service. Every tool is classified by its exact name after reading what its
- * handler does in that version's source — a name that reads as read-only may still write (`mark-as-read`,
- * `complete-reminder`) — and the server's own annotations are never read. The names and their apps are recorded from
- * the pinned version's real `tools/list` in `test/fixtures/appleServerListing.ts`; the auth tools have no app, so the
- * gateway never offers them (an app-based connector offers only tools whose app is chosen).
+ * Apple apps: the Mac's Calendar, Reminders, Notes, Contacts, Mail, Messages and Safari, through the pinned community server (`mcp-icloud@2.1.4`, MIT, `MrGo2/icloud-mcp`; connectors specification, Technical notes), run as a stdio child from the copy vendored with the service.
+ * Every tool is classified by its exact name after reading what its handler does in that version's source — a name that reads as read-only may still write (`mark-as-read`, `complete-reminder`) — and the server's own annotations are never read.
+ * The names and their apps are recorded from the pinned version's real `tools/list` in `test/fixtures/appleServerListing.ts`; the auth tools have no app, so the gateway never offers them (an app-based connector offers only tools whose app is chosen).
  */
 export const appleEntry: CatalogEntry = {
   apps: [
@@ -110,12 +103,12 @@ export const appleEntry: CatalogEntry = {
     { id: "reminders", isDefault: true, name: "Reminders" },
     { id: "notes", isDefault: true, name: "Notes" },
     { id: "contacts", isDefault: true, name: "Contacts" },
-    { id: "mail", isDefault: false, name: "Mail" },
+    { id: "mail", isDefault: false, name: "Mail", probeTool: "list-folders" },
     { id: "messages", isDefault: false, name: "Messages" },
-    { id: "safari", isDefault: false, name: "Safari" },
+    { id: "safari", isDefault: false, name: "Safari", probeTool: "list-safari-tabs" },
   ],
-  // The pinned server runs from the copy vendored with the service (packages/service/vendor/mcp-icloud.cjs) with a
-  // system Node. USE_LOCAL_MODE is forced so a .env beside the vendored file cannot flip it to cloud mode.
+  // The pinned server runs from the copy vendored with the service (packages/service/vendor/mcp-icloud.cjs) with a system Node.
+  // USE_LOCAL_MODE is forced so a .env beside the vendored file cannot flip it to cloud mode.
   backend: { _tag: "Stdio", env: { USE_LOCAL_MODE: "true" }, server: "mcp-icloud", version: "2.1.4" },
   description:
     "Let threads work with this Mac's Calendar, Reminders, Notes and Contacts, and, if you choose, Mail, Messages and Safari.",

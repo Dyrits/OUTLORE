@@ -1,6 +1,5 @@
 import type {
   ApplePermissionReport,
-  ApplePermissionStatus,
   ConnectorCard,
   ConnectorChoiceCard,
   ConnectorChoiceLevel,
@@ -8,6 +7,7 @@ import type {
 import { Context, Effect, Layer, Semaphore } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
 import { Changes, notFound, type ServiceFailure } from "../core/index.ts";
+import { makeApplePermissions } from "./applePermissions.ts";
 import { ConnectorAsking, ConnectorNotices } from "./asking.ts";
 import { isUsableBy } from "./availability.ts";
 import { ConnectorBackends } from "./backend.ts";
@@ -16,8 +16,9 @@ import { type CatalogEntry, entryOf } from "./catalog.ts";
 import { defaultCatalog } from "./catalogEntries.ts";
 import { type AuthFlowDependencies, requestAppleConnectorPermission, signInConnector } from "./connectorAuth.ts";
 import { type CallDependencies, listOfferedTools, makeCall, markRefused, recordFailure } from "./connectorCall.ts";
-import { type CardDependencies, cardOf, type PanelTool, panelToolsOf } from "./connectorCards.ts";
-import { choiceCardsOf } from "./connectorChoiceCards.ts";
+import { type CardDependencies, type PanelTool, readCard, readPanelTools } from "./connectorCards.ts";
+import { readChoiceCards } from "./connectorChoiceCards.ts";
+import { writeNeedsAndPublish } from "./connectorNeeds.ts";
 import {
   chooseApps,
   installConnector,
@@ -32,10 +33,10 @@ import {
   type RemovalDependencies,
   resumeConnectorRemovals,
 } from "./connectorRemoval.ts";
-import { type OfferedConnectorTool, readOfferedTools, readStanding } from "./connectorState.ts";
-import { readConnectorRecord, readConnectorRecords, readSubject, writeNeeds } from "./connectorStore.ts";
+import { type OfferedConnectorTool, readOfferedTools, readStanding, type StateDependencies } from "./connectorState.ts";
+import { readConnectorRecord, readConnectorRecords, readSubject } from "./connectorStore.ts";
 import { ConnectorGateway, type ConnectorTool } from "./gateway.ts";
-import type { BrowserOpener } from "./oauth/index.ts";
+import { type BrowserOpener, defaultOpenBrowser } from "./oauth/index.ts";
 import { failureOutcomeOf, makeToolListing } from "./toolListing.ts";
 import { VaultPort } from "./vaultPort.ts";
 
@@ -112,6 +113,14 @@ const toolOf = (tool: OfferedConnectorTool) =>
     tool: tool.tool,
   }) satisfies ConnectorTool;
 
+const ownerOperationsOf = (operations: OperationDependencies) => ({
+  chooseApps: (request: Parameters<typeof chooseApps>[1]) => chooseApps(operations, request),
+  install: (request: Parameters<typeof installConnector>[1]) => installConnector(operations, request),
+  setSwitch: (request: Parameters<typeof setConnectorSwitch>[1]) => setConnectorSwitch(operations, request),
+  setTool: (request: Parameters<typeof setConnectorTool>[1]) => setConnectorTool(operations, request),
+  startRemoval: (connectorId: string) => startRemoval(operations, connectorId),
+});
+
 const make = (options: ConnectorsOptions) =>
   Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
@@ -125,27 +134,33 @@ const make = (options: ConnectorsOptions) =>
     const platform = options.platform ?? process.platform;
     const listing = makeToolListing({ backends, vault });
     const provided = Effect.provideService(SqlClient.SqlClient, sql);
-    // macOS remains authoritative; a fresh service starts with no observed grants and never probes from a paired device.
-    const permissions = new Map<string, Map<string, ApplePermissionStatus>>();
+    const permissions = makeApplePermissions();
     const permissionChecks = yield* Semaphore.make(1);
-    let permissionRevision = 0;
-    const applePermissionOf = (connectorId: string, app: string) =>
-      permissions.get(connectorId)?.get(app) ?? "NotAskedYet";
-    const revokeApplePermission = (connectorId: string, app: string) => {
-      permissionRevision++;
-      const statuses = permissions.get(connectorId) ?? new Map<string, ApplePermissionStatus>();
-      statuses.set(app, "NotAllowed");
-      permissions.set(connectorId, statuses);
+    const signInLocks = new Map<string, Semaphore.Semaphore>();
+    const signInLockOf = (connectorId: string) => {
+      const existing = signInLocks.get(connectorId);
+      if (existing !== undefined) return existing;
+      const created = Semaphore.makeUnsafe(1);
+      signInLocks.set(connectorId, created);
+      return created;
     };
-    const state = { applePermissionOf, catalog, listing, sql, vault };
+
+    const state: StateDependencies = { catalog, listing, permissions, sql, vault };
     const operations: OperationDependencies = { ...state, calls, platform };
     const cardDependencies: CardDependencies = { ...state, platform };
-    const callDependencies: CallDependencies = { ...state, asking, calls, changes, notices, revokeApplePermission };
+    const callDependencies: CallDependencies = { ...state, asking, calls, changes, notices };
+    const authDependencies: AuthFlowDependencies = {
+      ...cardDependencies,
+      callDependencies,
+      changes,
+      openBrowser: options.openBrowser ?? defaultOpenBrowser,
+    };
+    const removalDependencies: RemovalDependencies = { changes, listing, permissions, sql, vault };
 
     const card = Effect.fnUntraced(function* (connectorId: string) {
       const entry = entryOf(catalog, connectorId);
       if (entry === null) return yield* notFound("Outlore offers no such connector.");
-      return yield* cardOf(cardDependencies, entry);
+      return yield* readCard(cardDependencies, entry);
     });
 
     /** Lists a connector's tools again; a failure warns the thread that starts the turn, when one is named. */
@@ -155,21 +170,6 @@ const make = (options: ConnectorsOptions) =>
       if (threadId !== null) yield* recordFailure(callDependencies, entry, threadId, result.failure);
       else if (failureOutcomeOf(result.failure).isRefused) yield* markRefused(callDependencies, entry);
     });
-
-    const authDependencies: AuthFlowDependencies = {
-      callDependencies,
-      cardDependencies,
-      catalog,
-      changes,
-      listing,
-      openBrowser: options.openBrowser,
-      permissions,
-      platform,
-      readPermissionRevision: () => permissionRevision,
-      refreshFor,
-      sql,
-      vault,
-    };
 
     const beginTurn = Effect.fnUntraced(function* (threadId: string, runKey: string = threadId) {
       const subject = yield* readSubject(threadId).pipe(provided);
@@ -185,24 +185,13 @@ const make = (options: ConnectorsOptions) =>
       return names;
     }, Effect.orDie);
 
-    const removalDependencies: RemovalDependencies = {
-      bumpPermissionRevision: () => {
-        permissionRevision++;
-      },
-      changes,
-      listing,
-      permissions,
-      sql,
-      vault,
-    };
-
     const built: ConnectorsBuilt = {
+      ...ownerOperationsOf(operations),
       beginTurn,
       card,
-      cards: Effect.forEach(catalog, (entry) => cardOf(cardDependencies, entry)),
-      choicesAt: (level) => choiceCardsOf(cardDependencies, level),
-      chooseApps: (request) => chooseApps(operations, request),
-      clearNeeds: (connectorId) => writeNeeds(connectorId, null).pipe(provided, Effect.andThen(changes.publish)),
+      cards: Effect.forEach(catalog, (entry) => readCard(cardDependencies, entry)),
+      choicesAt: (level) => readChoiceCards(cardDependencies, level),
+      clearNeeds: (connectorId) => writeNeedsAndPublish({ changes, sql }, connectorId, null),
       eraseSecrets: (connectorId) => eraseConnectorSecrets(removalDependencies, connectorId),
       finishRemoval: (connectorId) => finishConnectorRemoval(removalDependencies, connectorId),
       gateway: {
@@ -215,8 +204,7 @@ const make = (options: ConnectorsOptions) =>
             Effect.orDie,
           ),
       },
-      install: (request) => installConnector(operations, request),
-      panelTools: (threadId) => panelToolsOf(cardDependencies, threadId),
+      panelTools: (threadId) => readPanelTools(cardDependencies, threadId),
       refresh: (connectorId) =>
         Effect.gen(function* () {
           const entry = entryOf(catalog, connectorId);
@@ -226,10 +214,7 @@ const make = (options: ConnectorsOptions) =>
       requestApplePermission: (connectorId) =>
         permissionChecks.withPermit(requestAppleConnectorPermission(authDependencies, connectorId)),
       resumeRemovals: resumeConnectorRemovals(removalDependencies),
-      setSwitch: (request) => setConnectorSwitch(operations, request),
-      setTool: (request) => setConnectorTool(operations, request),
-      signIn: (connectorId) => signInConnector(authDependencies, connectorId),
-      startRemoval: (connectorId) => startRemoval(operations, connectorId),
+      signIn: (connectorId) => signInLockOf(connectorId).withPermit(signInConnector(authDependencies, connectorId)),
       stopRevokedCalls: calls.stopRevoked.pipe(Effect.asVoid),
     };
     return built;

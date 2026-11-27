@@ -20,7 +20,7 @@ describe("opening a connector backend", () => {
     return Effect.gen(function* () {
       const vault = yield* VaultPort;
       const listing = makeToolListing({ backends, vault });
-      yield* Effect.all([listing.backendOf(calendarEntry), listing.backendOf(calendarEntry)], {
+      yield* Effect.all([listing.openBackend(calendarEntry), listing.openBackend(calendarEntry)], {
         concurrency: "unbounded",
       });
       expect(opens).toBe(1);

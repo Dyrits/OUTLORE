@@ -117,7 +117,7 @@ export const toolServerLayer = Layer.effectDiscard(
         Effect.orDie,
       ),
       isCovered: isCoveredByCodeMode,
-      startsWork,
+      isStartingWork: startsWork,
     });
 
     const dispatchTool = Effect.fnUntraced(

@@ -1,12 +1,11 @@
-// Who may use what (connectors blueprint, `availability.ts`; connectors specification, Where a connector is available). Pure:
-// the store reads the facts and this decides.
+// Who may use what (connectors blueprint, `availability.ts`; connectors specification, Where a connector is available).
+// Pure: the store reads the facts and this decides.
 
 /** An explicit choice of a connector at one level; Inherit is no choice. */
 export type SwitchChoice = "On" | "Off";
 
 /**
- * Who asks: a quest (an errand and a Ritual's quest are quests of their own, and an errand's subject is its quest's), with
- * the realm its top thread is in at the time of asking, or Chronicler, which follows the global switch alone.
+ * Who asks: a quest (an errand and a Ritual's quest are quests of their own, and an errand's subject is its quest's), with the realm its top thread is in at the time of asking, or Chronicler, which follows the global switch alone.
  */
 export type Subject =
   | { readonly _tag: "Chronicler" }
@@ -35,9 +34,8 @@ export type Standing = {
 export const noChoices: ConnectorChoices = { borderlands: null, quests: new Map(), realms: new Map() };
 
 /**
- * Whether the connector is usable by the subject: installed, connected, not being removed and switched on globally, and
- * then the quest's own choice, else the choice of its placement (its realm, or the Borderlands only for a quest with no
- * realm: they are alternatives, never a chain), else On. A realm's or the Borderlands' Inherit means the global switch.
+ * Whether the connector is usable by the subject: installed, connected, not being removed and switched on globally, and then the quest's own choice, else the choice of its placement (its realm, or the Borderlands only for a quest with no realm: they are alternatives, never a chain), else On.
+ * A realm's or the Borderlands' Inherit means the global switch.
  */
 export const isUsableBy = (standing: Standing, subject: Subject) => {
   if (!standing.isInstalled || standing.isRemoving || !standing.isConnected || !standing.isEnabled) return false;
@@ -64,9 +62,8 @@ export type ToolStanding = {
 };
 
 /**
- * Whether the thread is offered the tool: its connector is usable by the subject, the tool is not switched off, and for a
- * connector with apps the tool's app is known and chosen. A tool whose app the catalog does not name is not offered: its
- * app cannot be checked, so the choice of apps could not be kept.
+ * Whether the thread is offered the tool: its connector is usable by the subject, the tool is not switched off, and for a connector with apps the tool's app is known and chosen.
+ * A tool whose app the catalog does not name is not offered: its app cannot be checked, so the choice of apps could not be kept.
  */
 export const isToolOffered = (standing: Standing, tools: ToolStanding, tool: OfferedTool, subject: Subject) => {
   if (!isUsableBy(standing, subject)) return false;

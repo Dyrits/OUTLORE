@@ -1,7 +1,7 @@
 import { Context, Effect, Layer, Schema } from "effect";
 
-// The Vault as the connectors use it (connectors blueprint, `vault/`). The Vault is built apart, in `vault/`, which this
-// folder does not import: this port says what the gateway needs of it, and the service's composition supplies it.
+// The Vault as the connectors use it (connectors blueprint, `vault/`).
+// The Vault is built apart, in `vault/`, which this folder does not import: this port says what the gateway needs of it, and the service's composition supplies it.
 
 /** The Vault holds no secret of that kind for the connector. */
 export class SecretMissing extends Schema.TaggedError<SecretMissing>()("SecretMissing", {
@@ -9,9 +9,9 @@ export class SecretMissing extends Schema.TaggedError<SecretMissing>()("SecretMi
   kind: Schema.String,
 }) {}
 
-/** The Vault cannot answer now: locked, its key lost, a record corrupt, not protected, or a failed read or write. */
+/** The Vault cannot answer now: locked, its key lost, a record corrupt, invalid input, not protected, or a failed read or write. */
 export class VaultUnavailable extends Schema.TaggedError<VaultUnavailable>()("VaultUnavailable", {
-  reason: Schema.Literals(["Locked", "Lost", "Corrupt", "Failed", "NotProtected"]),
+  reason: Schema.Literals(["Locked", "Lost", "Corrupt", "Failed", "Invalid", "NotProtected"]),
 }) {}
 
 /** What the connectors need of the Vault: whether a secret is held, the one read, storing OAuth sessions, and removing secrets. */

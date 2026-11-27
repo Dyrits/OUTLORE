@@ -1,9 +1,8 @@
 import { Predicate } from "effect";
 import type { ConnectorTool } from "./gateway.ts";
 
-// The declarations a thread reads in Code Mode's tool description, written from each tool's JSON Schema, as
-// Cloudflare's Code Mode does (`generateTypesFromJsonSchema`): a model writes correct calls more often from types
-// than from schemas. Only what a model needs is rendered; anything else reads `unknown`.
+// The declarations a thread reads in Code Mode's tool description, written from each tool's JSON Schema, as Cloudflare's Code Mode does (`generateTypesFromJsonSchema`): a model writes correct calls more often from types than from schemas.
+// Only what a model needs is rendered; anything else reads `unknown`.
 
 /** How deep nested objects are written out before they read `unknown`. */
 const maxDepth = 4;

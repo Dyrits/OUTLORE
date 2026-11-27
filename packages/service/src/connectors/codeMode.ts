@@ -6,18 +6,14 @@ import { CodeCallFailure, type CodeFunction, type CodeFunctions, type CodeRun, d
 import { type Binding, declarationOf, identifierOf, type OwnTool, ownDeclarationOf } from "./codeTypes.ts";
 import type { ConnectorGateway, ConnectorTool } from "./gateway.ts";
 
-// Code Mode (connectors specification, Code Mode; CHG-0324, CHG-0441, CHG-0446): with the setting on, a thread is
-// offered one tool that runs a short program calling the tools of its tool server, in place of listing each of them:
-// its connectors' tools as `connectors.<connector>.<tool>` and Outlore's own thread tools as `outlore.<tool>`, but not
-// the few that must stay direct. Every call the program makes goes through the same door a listed tool's call would,
-// so the switches, the questions and the answers are the same; only the listing and the way of calling change.
+// Code Mode (connectors specification, Code Mode; CHG-0324, CHG-0441, CHG-0446): with the setting on, a thread is offered one tool that runs a short program calling the tools of its tool server, in place of listing each of them: its connectors' tools as `connectors.<connector>.<tool>` and Outlore's own thread tools as `outlore.<tool>`, but not the few that must stay direct.
+// Every call the program makes goes through the same door a listed tool's call would, so the switches, the questions and the answers are the same; only the listing and the way of calling change.
 
 /** The one tool Code Mode lists in place of the tools it covers. */
 export const codeToolName = "run_code";
 
 /**
- * The most calls one run may make to tools that start or redirect other work, so one run cannot open a flood of
- * threads: a refused call comes back to the code as an error.
+ * The most calls one run may make to tools that start or redirect other work, so one run cannot open a flood of threads: a refused call comes back to the code as an error.
  */
 export const maxWorkStartsPerRun = 5;
 
@@ -31,7 +27,7 @@ export type OwnTools = {
   /** Whether Code Mode covers the tool: it is listed in the code and no longer listed directly. */
   readonly isCovered: (name: string) => boolean;
   /** Whether the tool starts or redirects other threads' work, which a run may do only so many times. */
-  readonly startsWork: (name: string) => boolean;
+  readonly isStartingWork: (name: string) => boolean;
 };
 
 /** Each connector tool's place in the code; two tools whose names read the same as identifiers get a numbered suffix. */
@@ -131,8 +127,8 @@ const codeResultOf = (answer: ToolAnswer) =>
   answer.isError ? Effect.fail(new CodeCallFailure({ message: answer.text })) : Effect.succeed(resultOf(answer.text));
 
 /**
- * Runs a thread's program against its tools: each connector call through the gateway and each call to one of Outlore's
- * tools through its own door, as a listed tool would be. The number of calls that start work is counted for the run.
+ * Runs a thread's program against its tools: each connector call through the gateway and each call to one of Outlore's tools through its own door, as a listed tool would be.
+ * The number of calls that start work is counted for the run.
  */
 const runCode = (
   executor: CodeExecutor["Service"],
@@ -156,7 +152,7 @@ const runCode = (
     for (const { name } of ownTools.filter((tool) => own.isCovered(tool.name))) {
       outlore[identifierOf(name)] = (input) =>
         Effect.suspend(() => {
-          if (own.startsWork(name)) {
+          if (own.isStartingWork(name)) {
             workStarts += 1;
             if (workStarts > maxWorkStartsPerRun)
               return Effect.fail(
@@ -180,9 +176,9 @@ type Listed = {
 };
 
 /**
- * The tools a thread is offered. With Code Mode off, each of Outlore's tools and each connector tool. With it on, the
- * tools that stay direct and Code Mode's one tool, which declares the covered tools (Outlore's and the connectors') in
- * their place, or none of it when there is nothing to call.
+ * The tools a thread is offered.
+ * With Code Mode off, each of Outlore's tools and each connector tool.
+ * With it on, the tools that stay direct and Code Mode's one tool, which declares the covered tools (Outlore's and the connectors') in their place, or none of it when there is nothing to call.
  */
 export const offeredToolsOf = (
   ownListed: ReadonlyArray<OwnTool>,
@@ -202,9 +198,8 @@ export const offeredToolsOf = (
 };
 
 /**
- * Answers a call to Code Mode's tool, to a connector tool or to a tool of Outlore's that Code Mode covers, or answers
- * null when the name is none of those and the caller carries on (a tool that stays direct, or a thread tool with
- * Code Mode off). With Code Mode on, a covered tool is reached only from code; with it off, Code Mode's tool is unknown.
+ * Answers a call to Code Mode's tool, to a connector tool or to a tool of Outlore's that Code Mode covers, or answers null when the name is none of those and the caller carries on (a tool that stays direct, or a thread tool with Code Mode off).
+ * With Code Mode on, a covered tool is reached only from code; with it off, Code Mode's tool is unknown.
  */
 export const answerCodeModeCall = (
   executor: CodeExecutor["Service"],
@@ -231,8 +226,7 @@ export const answerCodeModeCall = (
     const isListed = (yield* gateway.listingFor(call.threadId)).some((tool) => tool.name === call.name);
     if (call.shouldUseCodeMode)
       return isListed ? toolRefusal(`Code Mode is on: call ${call.name} from code, with ${codeToolName}.`) : null;
-    // A name that reads as a connector's tool goes to the gateway even when the thread is no longer offered it, so the
-    // thread is told the connector is off for it, not that the tool is unknown (connectors specification).
+    // A name that reads as a connector's tool goes to the gateway even when the thread is no longer offered it, so the thread is told the connector is off for it, not that the tool is unknown (connectors specification).
     return isListed || splitListedName(call.name) !== null
       ? yield* gateway.call(call.threadId, call.name, call.args)
       : null;

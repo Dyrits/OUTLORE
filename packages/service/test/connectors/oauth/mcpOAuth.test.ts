@@ -4,14 +4,10 @@ import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { connectorBackendsLayer } from "../../../src/connectors/backends/defaultBackends.ts";
 import { type CatalogEntry, oauthSecretKind } from "../../../src/connectors/catalog.ts";
-import {
-  decodeOAuthSession,
-  discoverOAuthMetadata,
-  encodeOAuthSession,
-  type OAuthSession,
-  openLoopbackCallback,
-  refreshOAuthToken,
-} from "../../../src/connectors/oauth/index.ts";
+import { openLoopbackCallback } from "../../../src/connectors/oauth/authorization.ts";
+import { discoverOAuthMetadata } from "../../../src/connectors/oauth/discovery.ts";
+import { decodeOAuthSession, encodeOAuthSession, refreshOAuthToken } from "../../../src/connectors/oauth/index.ts";
+import type { OAuthSession } from "../../../src/connectors/oauth/session.ts";
 import { numberFieldOf, textFieldOf } from "../../../src/core/index.ts";
 import { Service } from "../../../src/index.ts";
 import { install, inWorld, replyOf, untilIdle } from "../../fixtures/connectorWorld.ts";
@@ -36,6 +32,8 @@ type MockOAuthState = {
   readonly refreshCount: { current: number };
   readonly refreshToken: { current: string };
   readonly rejectAccessTokenOnce: { current: boolean };
+  readonly tokenErrorCode: { current: string | null };
+  readonly toolsListStatus: { current: number | null };
   readonly useOidcFallback: { current: boolean };
   readonly useWellKnownFallback: { current: boolean };
 };
@@ -60,6 +58,8 @@ const mockOAuthMcpServer = () =>
       const redirectMode: { current: "none" | "metadata" | "token" | "mcp" } = { current: "none" };
       const refreshCount = { current: 0 };
       const rejectAccessTokenOnce = { current: false };
+      const tokenErrorCode: { current: string | null } = { current: null };
+      const toolsListStatus: { current: number | null } = { current: null };
       const useOidcFallback = { current: false };
       const useWellKnownFallback = { current: false };
       let origin = "";
@@ -152,6 +152,12 @@ const mockOAuthMcpServer = () =>
             const form = new URLSearchParams(await readBody(request));
             const grantType = form.get("grant_type");
             if (grantType === "authorization_code") {
+              if (tokenErrorCode.current !== null) {
+                response
+                  .writeHead(400, { "content-type": "application/json" })
+                  .end(JSON.stringify({ error: tokenErrorCode.current, error_description: "secret-free-text" }));
+                return;
+              }
               const code = form.get("code") ?? "";
               const verifier = form.get("code_verifier") ?? "";
               const clientId = form.get("client_id") ?? "";
@@ -261,6 +267,10 @@ const mockOAuthMcpServer = () =>
               return;
             }
             if (method === "tools/list") {
+              if (toolsListStatus.current !== null) {
+                response.writeHead(toolsListStatus.current).end();
+                return;
+              }
               response.writeHead(200, { "content-type": "application/json" }).end(
                 jsonAnswer(id, {
                   tools: [
@@ -320,6 +330,8 @@ const mockOAuthMcpServer = () =>
             refreshCount,
             refreshToken,
             rejectAccessTokenOnce,
+            tokenErrorCode,
+            toolsListStatus,
             useOidcFallback,
             useWellKnownFallback,
           }),
@@ -547,5 +559,112 @@ describe("the generic MCP OAuth 2.1 client", () => {
         ),
       ),
     ),
+  );
+
+  it.live(
+    "ignores stray error callbacks with wrong state, surfaces RFC 6749 error codes, and avoids premature signed-in copy",
+    () =>
+      Effect.scoped(
+        Effect.gen(function* () {
+          const callback = yield* openLoopbackCallback("expected-state-value", 5_000);
+          const strayError = yield* Effect.promise(() =>
+            fetch(`${callback.redirectUri}?error=access_denied&state=wrong-state`),
+          );
+          expect(strayError.status).toBe(400);
+          // The active sign-in is still waiting, so the real callback with the matching state succeeds.
+          const good = yield* Effect.promise(() =>
+            fetch(`${callback.redirectUri}?code=real-code&state=expected-state-value`),
+          );
+          expect(good.status).toBe(200);
+          const html = yield* Effect.promise(() => good.text());
+          expect(html).not.toContain("Signed in to Outlore");
+          expect(html).toContain("Authorization received");
+          expect(yield* callback.awaitCode).toBe("real-code");
+
+          // A valid-state error callback surfaces the RFC 6749 error code without free-text descriptions.
+          const second = yield* openLoopbackCallback("second-state", 5_000);
+          const denied = yield* Effect.promise(() =>
+            fetch(`${second.redirectUri}?error=access_denied&state=second-state`),
+          );
+          expect(denied.status).toBe(400);
+          const failure = yield* Effect.flip(second.awaitCode);
+          expect(failure.kind).toBe("Authorization");
+          expect(failure.message).toContain("(access_denied)");
+        }),
+      ),
+  );
+
+  it.live("surfaces token endpoint RFC 6749 error codes and post-sign-in tools/list refusals or server errors", () =>
+    mockOAuthMcpServer().pipe(
+      Effect.flatMap((mock) =>
+        inWorld(
+          {
+            backends: connectorBackendsLayer,
+            entries: [oauthEntryOf(mock.mcpUrl)],
+            hasKey: false,
+            openBrowser: simulatedBrowser,
+          },
+          (world) =>
+            Effect.gen(function* () {
+              yield* install("oauth_notes");
+
+              // 1. Token exchange HTTP 400 with RFC 6749 error code (free-text description stays hidden).
+              mock.tokenErrorCode.current = "invalid_scope";
+              const tokenFailure = yield* Effect.flip(call({ _tag: "SignInConnector", connectorId: "oauth_notes" }));
+              expect(tokenFailure.message).toContain("HTTP 400 (invalid_scope)");
+              expect(tokenFailure.message).not.toContain("secret-free-text");
+              expect(world.vault.holds("oauth_notes", oauthSecretKind)).toBe(false);
+              mock.tokenErrorCode.current = null;
+
+              // 2. Post-sign-in tools/list HTTP 403 surfaces status and marks the card NeedsConnecting with that reason.
+              mock.toolsListStatus.current = 403;
+              const refusedFailure = yield* Effect.flip(call({ _tag: "SignInConnector", connectorId: "oauth_notes" }));
+              expect(refusedFailure.message).toContain("HTTP 403");
+              expect(refusedFailure.message).toContain("refused the token");
+              const refusedCard = (yield* call({ _tag: "ListConnectors" })).find((card) => card.id === "oauth_notes");
+              expect(refusedCard?.state).toBe("NeedsConnecting");
+              expect(refusedCard?.needs).toContain("HTTP 403");
+
+              // 3. Post-sign-in tools/list HTTP 500 is reported instead of silently succeeding with zero tools.
+              mock.toolsListStatus.current = 500;
+              const serverFailure = yield* Effect.flip(call({ _tag: "SignInConnector", connectorId: "oauth_notes" }));
+              expect(serverFailure.message).toContain("HTTP 500");
+              expect(serverFailure.message).toContain("tool list could not be read");
+
+              // 4. Subsequent clean sign-in starts a fresh authenticated MCP initialize handshake and becomes Ready.
+              mock.toolsListStatus.current = null;
+              const authInitCount = () =>
+                mock.mcpRequests.filter(
+                  (request) => request.method === "initialize" && request.headers.authorization !== undefined,
+                ).length;
+              const initialInitCount = authInitCount();
+              const ready = yield* call({ _tag: "SignInConnector", connectorId: "oauth_notes" });
+              expect(ready.state).toBe("Ready");
+              expect(authInitCount()).toBe(initialInitCount + 1);
+            }),
+        ),
+      ),
+    ),
+  );
+
+  it.live("encodes OAuth sessions compactly without null fields while decoding both compact and legacy JSON", () =>
+    Effect.sync(() => {
+      const session: OAuthSession = {
+        accessToken: "tok",
+        clientId: "cid",
+        clientSecret: null,
+        expiresAt: null,
+        refreshToken: null,
+        resource: null,
+        scope: null,
+        tokenEndpoint: "https://auth.example.com/token",
+        version: 1,
+      };
+      const compact = encodeOAuthSession(session);
+      expect(compact).not.toContain("clientSecret");
+      expect(compact).not.toContain("resource");
+      expect(decodeOAuthSession(compact)).toEqual(session);
+      expect(decodeOAuthSession(JSON.stringify(session))).toEqual(session);
+    }),
   );
 });

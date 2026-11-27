@@ -2,17 +2,12 @@ import { Effect } from "effect";
 import { isRecord } from "../../core/index.ts";
 import { type BackendAuthKind, BackendFailure, type ConnectorErrorClass } from "../backend.ts";
 import type { CatalogBackend } from "../catalog.ts";
+import { protocolVersion } from "../mcpClient.ts";
 
 // Wire transport for Streamable-HTTP MCP requests: POST framing, SSE reply reading, redirect refusal, and error classification.
 
 /** The HTTP transport of one catalog entry. */
 export type HttpTransport = Extract<CatalogBackend, { readonly _tag: "Http" }>;
-
-/** The version of MCP this adapter speaks, told to the server with every request, as Streamable HTTP asks. */
-export const protocolVersion = "2025-06-18";
-
-/** Client identity sent during MCP Streamable HTTP session initialization. */
-export const clientInfo = { name: "outlore", version: "0.2.7" } as const;
 
 /** Fixed words used when a server reports 404 for a stale MCP session identifier. */
 export const sessionExpiredWords = "The server expired the MCP session.";
@@ -29,28 +24,20 @@ const failureWordsOf = {
 const redirectWords = "The server redirected the request elsewhere, which the adapter does not follow.";
 
 /** The failure with the class's own fixed words: nothing a server said reaches it. */
-export const refuse = (errorClass: ConnectorErrorClass) =>
-  new BackendFailure({ class: errorClass, upstream: failureWordsOf[errorClass] });
+export const refuse = (
+  errorClass: ConnectorErrorClass,
+  words: string = failureWordsOf[errorClass],
+  httpStatus?: number,
+) =>
+  new BackendFailure({
+    class: errorClass,
+    ...(httpStatus === undefined ? {} : { httpStatus }),
+    upstream: words,
+  });
 
 /** The class of failure an HTTP status is. */
 const failureClassOf = (status: number): ConnectorErrorClass =>
   status === 401 || status === 403 ? "Disconnected" : status === 429 || status >= 500 ? "Unreachable" : "Failed";
-
-/** The failure of a request the transport itself reported, kept out of the catch-all that a network error shares. */
-class HttpRefusal extends Error {
-  readonly failure: BackendFailure;
-  readonly isSessionExpired: boolean;
-
-  constructor(
-    errorClass: ConnectorErrorClass,
-    words: string = failureWordsOf[errorClass],
-    isSessionExpired: boolean = false,
-  ) {
-    super(words);
-    this.failure = new BackendFailure({ class: errorClass, upstream: words });
-    this.isSessionExpired = isSessionExpired;
-  }
-}
 
 /** A matching JSON-RPC reply, excluding notifications and other requests on an event stream. */
 const messageOf = (body: string, id: number) => {
@@ -91,7 +78,7 @@ const readEventReply = async (response: Response, id: number) => {
         boundary = /\r?\n\r?\n/.exec(buffer);
       }
       if (chunk.done) return null;
-      if (buffer.length > 1_000_000) throw new HttpRefusal("Failed");
+      if (buffer.length > 1_000_000) return null;
     }
   } finally {
     void reader.cancel().catch(() => undefined);
@@ -129,29 +116,40 @@ export const ask = (
   timeoutMillis: number,
   auth: BackendAuthKind,
 ) =>
-  Effect.tryPromise({
-    catch: (problem) => (problem instanceof HttpRefusal ? problem.failure : refuse("Unreachable")),
-    try: (signal) =>
-      fetch(transport.url, {
-        body: JSON.stringify({ id: counter, jsonrpc: "2.0", method, params }),
-        headers: headersOf(transport, secret, sessionId, auth),
-        // Never followed: a redirect would send the key's header to whatever origin the server names.
-        method: "POST",
-        redirect: "manual",
-        signal: AbortSignal.any([signal, AbortSignal.timeout(timeoutMillis)]),
-      }).then(async (response) => {
-        // A manual redirect answers with its 3xx status, or as an opaque redirect of status 0; either way the key stops here.
-        if (response.type === "opaqueredirect" || (response.status >= 300 && response.status < 400))
-          throw new HttpRefusal("Failed", redirectWords);
-        if (response.status === 404 && sessionId !== null) throw new HttpRefusal("Failed", sessionExpiredWords, true);
-        if (response.status < 200 || response.status >= 300) throw new HttpRefusal(failureClassOf(response.status));
-        // A 2xx answer with no JSON-RPC message in it is the server's failure, not a network one.
-        const message = (response.headers.get("content-type") ?? "").includes("text/event-stream")
+  Effect.gen(function* () {
+    const response = yield* Effect.tryPromise({
+      catch: () => refuse("Unreachable"),
+      try: (signal) =>
+        fetch(transport.url, {
+          body: JSON.stringify({ id: counter, jsonrpc: "2.0", method, params }),
+          headers: headersOf(transport, secret, sessionId, auth),
+          // Never followed: a redirect would send the key's header to whatever origin the server names.
+          method: "POST",
+          redirect: "manual",
+          signal: AbortSignal.any([signal, AbortSignal.timeout(timeoutMillis)]),
+        }),
+    });
+    // A manual redirect answers with its 3xx status, or as an opaque redirect of status 0; either way the key stops here.
+    if (response.type === "opaqueredirect" || (response.status >= 300 && response.status < 400)) {
+      return yield* refuse("Failed", redirectWords, response.status);
+    }
+    if (response.status === 404 && sessionId !== null) {
+      return yield* refuse("Failed", sessionExpiredWords, response.status);
+    }
+    if (response.status < 200 || response.status >= 300) {
+      const errorClass = failureClassOf(response.status);
+      return yield* refuse(errorClass, failureWordsOf[errorClass], response.status);
+    }
+    // A 2xx answer with no JSON-RPC message in it is the server's failure, not a network one.
+    const message = yield* Effect.tryPromise({
+      catch: () => refuse("Unreachable"),
+      try: async () =>
+        (response.headers.get("content-type") ?? "").includes("text/event-stream")
           ? await readEventReply(response, counter)
-          : messageOf(await response.text(), counter);
-        if (message === null) throw new HttpRefusal("Failed");
-        return { message, sessionId: response.headers.get("mcp-session-id") };
-      }),
+          : messageOf(await response.text(), counter),
+    });
+    if (message === null) return yield* refuse("Failed");
+    return { message, sessionId: response.headers.get("mcp-session-id") };
   });
 
 /** Sends one JSON-RPC notification (such as `notifications/initialized`) without expecting a JSON-RPC reply body. */
@@ -163,18 +161,23 @@ export const notify = (
   timeoutMillis: number,
   auth: BackendAuthKind,
 ) =>
-  Effect.tryPromise({
-    catch: (problem) => (problem instanceof HttpRefusal ? problem.failure : refuse("Unreachable")),
-    try: (signal) =>
-      fetch(transport.url, {
-        body: JSON.stringify({ jsonrpc: "2.0", method }),
-        headers: headersOf(transport, secret, sessionId, auth),
-        method: "POST",
-        redirect: "manual",
-        signal: AbortSignal.any([signal, AbortSignal.timeout(timeoutMillis)]),
-      }).then((response) => {
-        if (response.type === "opaqueredirect" || (response.status >= 300 && response.status < 400))
-          throw new HttpRefusal("Failed", redirectWords);
-        if (response.status < 200 || response.status >= 300) throw new HttpRefusal(failureClassOf(response.status));
-      }),
+  Effect.gen(function* () {
+    const response = yield* Effect.tryPromise({
+      catch: () => refuse("Unreachable"),
+      try: (signal) =>
+        fetch(transport.url, {
+          body: JSON.stringify({ jsonrpc: "2.0", method }),
+          headers: headersOf(transport, secret, sessionId, auth),
+          method: "POST",
+          redirect: "manual",
+          signal: AbortSignal.any([signal, AbortSignal.timeout(timeoutMillis)]),
+        }),
+    });
+    if (response.type === "opaqueredirect" || (response.status >= 300 && response.status < 400)) {
+      return yield* refuse("Failed", redirectWords, response.status);
+    }
+    if (response.status < 200 || response.status >= 300) {
+      const errorClass = failureClassOf(response.status);
+      return yield* refuse(errorClass, failureWordsOf[errorClass], response.status);
+    }
   });

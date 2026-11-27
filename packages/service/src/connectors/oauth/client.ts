@@ -1,10 +1,28 @@
 import { Clock, Effect } from "effect";
 import { isRecord, numberFieldOf, textFieldOf } from "../../core/index.ts";
+import { oauthErrorCodeOf } from "./authorization.ts";
 import type { OAuthSession } from "./session.ts";
 import { isAllowedOAuthUrl, OAuthFailure } from "./types.ts";
 
 // OAuth 2.1 HTTP client operations: RFC 7591 dynamic client registration, authorization code exchange, and refresh token exchange.
 // Every HTTP call refuses redirects.
+
+/** Reads a standard RFC 6749 error code from a failed OAuth JSON response body, never returning free-text descriptions. */
+const readOAuthErrorCode = (response: Response): Effect.Effect<string | null> =>
+  Effect.tryPromise({
+    catch: () => null,
+    try: () => response.text(),
+  }).pipe(
+    Effect.map((text) => {
+      try {
+        const parsed: unknown = JSON.parse(text);
+        return isRecord(parsed) ? oauthErrorCodeOf(textFieldOf(parsed, "error")) : null;
+      } catch {
+        return null;
+      }
+    }),
+    Effect.catch(() => Effect.succeed(null)),
+  );
 
 /** Client credentials obtained from RFC 7591 dynamic client registration. */
 export type RegisteredClient = {
@@ -54,9 +72,13 @@ export const registerDynamicClient = (
       });
     }
     if (response.status < 200 || response.status >= 300) {
+      const errorCode = yield* readOAuthErrorCode(response);
       return yield* new OAuthFailure({
         kind: "Registration",
-        message: `Dynamic client registration was refused with HTTP ${response.status}.`,
+        message:
+          errorCode === null
+            ? `Dynamic client registration was refused with HTTP ${response.status}.`
+            : `Dynamic client registration was refused with HTTP ${response.status} (${errorCode}).`,
       });
     }
     const text = yield* Effect.tryPromise({
@@ -116,9 +138,13 @@ const postTokenEndpoint = (
       });
     }
     if (response.status < 200 || response.status >= 300) {
+      const errorCode = yield* readOAuthErrorCode(response);
       return yield* new OAuthFailure({
         kind: failureKind,
-        message: `The server's token endpoint refused the request with HTTP ${response.status}.`,
+        message:
+          errorCode === null
+            ? `The server's token endpoint refused the request with HTTP ${response.status}.`
+            : `The server's token endpoint refused the request with HTTP ${response.status} (${errorCode}).`,
       });
     }
     const text = yield* Effect.tryPromise({

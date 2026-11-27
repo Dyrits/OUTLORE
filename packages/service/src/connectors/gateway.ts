@@ -15,16 +15,14 @@ export type ConnectorTool = {
 };
 
 /**
- * The connector gateway: the tools a thread may use, and the one door to call them, which asks the owner, stops a
- * switched-off call and keeps secrets out of answers (connectors specification and blueprint, `gateway.ts`).
+ * The connector gateway: the tools a thread may use, and the one door to call them, which asks the owner, stops a switched-off call and keeps secrets out of answers (connectors specification and blueprint, `gateway.ts`).
  */
 export class ConnectorGateway extends Context.Service<
   ConnectorGateway,
   {
     /**
-     * A turn starts: the thread's connectors list their tools again, one that fails warns and is left out, and the
-     * thread's snapshot of the tools it is offered for the turn is taken, kept under the run's key (the thread's id for
-     * its main run). Answers the listed names in the snapshot.
+     * A turn starts: the thread's connectors list their tools again, one that fails warns and is left out, and the thread's snapshot of the tools it is offered for the turn is taken, kept under the run's key (the thread's id for its main run).
+     * Answers the listed names in the snapshot.
      */
     readonly beginTurn: (threadId: string, runKey?: string) => Effect.Effect<ReadonlyArray<string>>;
     /** The run's turn ends: its snapshot is forgotten, and no other run's. */
@@ -37,8 +35,8 @@ export class ConnectorGateway extends Context.Service<
 >()("outlore/ConnectorGateway") {}
 
 /**
- * A gateway that offers no tool, for a service built to test without connectors. The service's own gateway is the one
- * over the stored connectors (`connectors.ts`), and Code Mode reaches its tools unchanged (CHG-0441).
+ * A gateway that offers no tool, for a service built to test without connectors.
+ * The service's own gateway is the one over the stored connectors (`connectors.ts`), and Code Mode reaches its tools unchanged (CHG-0441).
  */
 export const noConnectorsLayer = Layer.succeed(ConnectorGateway, {
   beginTurn: () => Effect.succeed([]),

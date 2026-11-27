@@ -1,7 +1,6 @@
-import type { ConnectorErrorClass } from "./backend.ts";
+import type { BackendTool, ConnectorErrorClass } from "./backend.ts";
 
-// What a thread is told when a connector fails or a call is refused (connectors blueprint, Errors and secrecy): fixed
-// sentences by class, never a server's own words.
+// What a thread is told when a connector fails or a call is refused (connectors blueprint, Errors and secrecy): fixed sentences by class, never a server's own words.
 
 /** The sentence a thread reads for each class of backend failure. */
 export const failureSentenceOf = {
@@ -20,9 +19,6 @@ export const warningOf = (name: string, errorClass: ConnectorErrorClass) =>
       ? `${name} could not be reached, so this turn goes on without it.`
       : null;
 
-/** What the owner reads under Needs connecting for a connector whose credentials were refused. */
-export const needsReasonOf = (name: string) => `${name} refused its sign-in or permission. Connect it again.`;
-
 /** The refusals a call can meet before it runs, as the thread reads them. */
 export const refusals = {
   cancelled: "This connector is off for this thread.",
@@ -40,8 +36,7 @@ const spellingsOf = (secret: string) => {
 };
 
 /**
- * The text with every occurrence of each secret, in each spelling, replaced by `[redacted]`: the last guard on anything
- * that leaves the gateway, longest spellings first so a spelling containing another is replaced whole.
+ * The text with every occurrence of each secret, in each spelling, replaced by `[redacted]`: the last guard on anything that leaves the gateway, longest spellings first so a spelling containing another is replaced whole.
  */
 export const redactedOf = (text: string, secrets: ReadonlyArray<string>) => {
   const spellings = secrets
@@ -51,6 +46,34 @@ export const redactedOf = (text: string, secrets: ReadonlyArray<string>) => {
     .toSorted((first, second) => second.length - first.length);
   return spellings.reduce((current, spelling) => current.split(spelling).join("[redacted]"), text);
 };
+
+/** Scrubs keys as well as nested values while the Vault still lends the secret. */
+const redactMetadata = (value: unknown, secrets: ReadonlyArray<string>): unknown => {
+  if (typeof value === "string") return redactedOf(value, secrets);
+  if (Array.isArray(value)) return value.map((item) => redactMetadata(item, secrets));
+  if (typeof value !== "object" || value === null) return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([key, item]) => [redactedOf(key, secrets), redactMetadata(item, secrets)]),
+  );
+};
+
+/** Returns a server's listed tools with every secret spelling scrubbed from names, descriptions, and input schemas. */
+export const redactedTools = (
+  tools: ReadonlyArray<BackendTool>,
+  secrets: ReadonlyArray<string>,
+): ReadonlyArray<BackendTool> =>
+  secrets.length === 0
+    ? tools
+    : tools.map((tool) => ({
+        description: redactedOf(tool.description, secrets),
+        inputSchema: Object.fromEntries(
+          Object.entries(tool.inputSchema).map(([key, value]) => [
+            redactedOf(key, secrets),
+            redactMetadata(value, secrets),
+          ]),
+        ),
+        name: redactedOf(tool.name, secrets),
+      }));
 
 /** The most characters of a connector's answer a thread reads, cut with a note, as Code Mode cuts its runs. */
 const maxAnswerCharacters = 24_000;

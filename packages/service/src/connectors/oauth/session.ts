@@ -1,9 +1,7 @@
 import { Schema } from "effect";
-import { type CatalogEntry, isOAuthEntry } from "../catalog.ts";
 
 // Versioned OAuth 2.1 session record stored as one encrypted Vault secret under `oauthSecretKind` (ADR 0027).
-// Keeping the access token, refresh token and dynamic client metadata together avoids a parallel token store while
-// letting the host refresh expired tokens and redact every sensitive field from tool outputs.
+// Keeping the access token, refresh token and dynamic client metadata together avoids a parallel token store while letting the host refresh expired tokens and redact every sensitive field from tool outputs.
 
 /** Refresh tokens this many milliseconds before their recorded expiry to avoid racing a boundary. */
 const refreshSkewMillis = 60_000;
@@ -24,14 +22,24 @@ export type OAuthSession = typeof OAuthSession.Type;
 
 const decodeUnknown = Schema.decodeUnknownOption(OAuthSession);
 
-/** Encodes an OAuth session as JSON text for Vault storage. */
-export const encodeOAuthSession = (session: OAuthSession): string => JSON.stringify(session);
+/** Encodes an OAuth session as compact JSON text for Vault storage, omitting null fields. */
+export const encodeOAuthSession = (session: OAuthSession): string =>
+  JSON.stringify(Object.fromEntries(Object.entries(session).filter(([, value]) => value !== null)));
 
 /** Parses an OAuth session from a Vault secret string, or returns null when malformed. */
 export const decodeOAuthSession = (raw: string): OAuthSession | null => {
   try {
     const parsed: unknown = JSON.parse(raw);
-    const decoded = decodeUnknown(parsed);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return null;
+    const normalized = {
+      clientSecret: null,
+      expiresAt: null,
+      refreshToken: null,
+      resource: null,
+      scope: null,
+      ...parsed,
+    };
+    const decoded = decodeUnknown(normalized);
     return decoded._tag === "Some" ? decoded.value : null;
   } catch {
     return null;
@@ -48,12 +56,4 @@ export const oauthSecretsOf = (session: OAuthSession): ReadonlyArray<string> => 
   if (session.refreshToken !== null && session.refreshToken !== "") values.push(session.refreshToken);
   if (session.clientSecret !== null && session.clientSecret !== "") values.push(session.clientSecret);
   return values;
-};
-
-/** Every secret string to redact for a connector's Vault value, extracting inner tokens for OAuth sessions. */
-export const redactionSecretsOf = (entry: CatalogEntry, rawSecret: string | null): ReadonlyArray<string> => {
-  if (rawSecret === null || rawSecret === "") return [];
-  if (!isOAuthEntry(entry)) return [rawSecret];
-  const session = decodeOAuthSession(rawSecret);
-  return session === null ? [rawSecret] : [rawSecret, ...oauthSecretsOf(session)];
 };

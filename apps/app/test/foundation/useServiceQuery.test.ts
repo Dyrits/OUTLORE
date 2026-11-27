@@ -130,3 +130,24 @@ it("shares one request between equal queries asked together, and asks again afte
   expect(sent).toHaveBeenCalledTimes(6);
   client.close();
 });
+
+it("refreshes the same cache entry in place without clearing data", async () => {
+  const { client, receive, sent } = await connected();
+  const query = useServiceQuery(client, { _tag: "ListConnectors" }, "connectors-refresh");
+  expect(sent).toHaveBeenCalledTimes(1);
+  receive(JSON.stringify({ _tag: "Success", id: "1", value: [] }));
+  await Promise.resolve();
+  const callsBefore = setSnapshot.mock.calls.length;
+  query.refresh();
+  expect(sent).toHaveBeenCalledTimes(2);
+  // Refreshing in place does not emit a null-data transition that would unmount the panel.
+  expect(setSnapshot).toHaveBeenCalledTimes(callsBefore);
+  receive(
+    JSON.stringify({ _tag: "Failure", error: { kind: "ExecutionFailure", message: "Refresh failed." }, id: "2" }),
+  );
+  await Promise.resolve();
+  expect(setSnapshot.mock.calls.slice(callsBefore).map(([update]) => shownBy(update))).toEqual([
+    { data: [], error: "Refresh failed." },
+  ]);
+  client.close();
+});

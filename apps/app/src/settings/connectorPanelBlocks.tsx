@@ -1,5 +1,5 @@
 import type { ConnectorCard } from "@outlore/contracts";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import {
   applePermissionLabelOf,
@@ -16,27 +16,38 @@ import { Button } from "../ui/button";
 import { ToggleRow } from "../ui/toggleRow";
 import { SettingsRule } from "./settingsParts";
 
-/** Runs one request for a panel: the panel is busy meanwhile, and shows the refusal in its own words. */
+/** Runs one request for a panel: the panel is busy meanwhile, shows the refusal in its own words, and can cancel a wait. */
 export function useAttempt(onChanged: () => void) {
   const [isBusy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const tokenRef = useRef(0);
+  const cancel = () => {
+    tokenRef.current += 1;
+    setBusy(false);
+  };
   const attempt = (work: () => Promise<unknown>, after?: () => void) => {
+    const token = tokenRef.current + 1;
+    tokenRef.current = token;
     setBusy(true);
     work()
       .then(
         () => {
+          if (tokenRef.current !== token) return;
           setError(null);
           onChanged();
           after?.();
         },
         (reason) => {
+          if (tokenRef.current !== token) return;
           setError(messageOf(reason));
           onChanged();
         },
       )
-      .finally(() => setBusy(false));
+      .finally(() => {
+        if (tokenRef.current === token) setBusy(false);
+      });
   };
-  return { attempt, error, isBusy };
+  return { attempt, cancel, error, isBusy };
 }
 
 /** Runs an asynchronous connector action while tracking busy and error state. */

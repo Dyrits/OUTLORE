@@ -1,12 +1,12 @@
-// The connector catalog (connectors blueprint, `catalog.ts`): data, one entry per connector Outlore offers. The catalog
-// alone classifies a connector's tools; a server's own labels (an MCP `readOnlyHint`) are never read.
+// The connector catalog (connectors blueprint, `catalog.ts`): data, one entry per connector Outlore offers.
+// The catalog alone classifies a connector's tools; a server's own labels (an MCP `readOnlyHint`) are never read.
 
 /** How the catalog classifies a tool: a read runs unasked, a write asks. A tool it does not name is unclassified and asks. */
 export type ToolClass = "Read" | "Write";
 
 /**
- * The licence an entry states for a hosted service whose server code is not published: not an OSI licence, said as it is
- * (connectors specification, Wave 1). An entry whose server code is published names that repository's SPDX identifier instead.
+ * The licence an entry states for a hosted service whose server code is not published: not an OSI licence, said as it is (connectors specification, Wave 1).
+ * An entry whose server code is published names that repository's SPDX identifier instead.
  */
 export const hostedServiceLicence = "Hosted service, server code not published";
 
@@ -35,6 +35,8 @@ export type CatalogApp = {
   readonly id: string;
   readonly isDefault: boolean;
   readonly name: string;
+  /** Optional preferred read tool used to probe macOS Automation permission for this app. */
+  readonly probeTool?: string;
 };
 
 /** How the host reaches a connector's server; the real adapters come with the backends (blueprint, Order step 4). */
@@ -56,9 +58,7 @@ export type CatalogBackend =
       /** Extra environment for the child, such as forcing the pinned server's local mode. */
       readonly env?: Record<string, string>;
       /**
-       * The pinned server package, by its npm name; the backend resolves it to the copy vendored with the service
-       * (`packages/service/vendor/`) in dev and tests, or bundled into the packaged app, and runs that file with a
-       * system Node, since a packaged Outlore cannot run its own binary as one.
+       * The pinned server package, by its npm name; the backend resolves it to the copy vendored with the service (`packages/service/vendor/`) in dev and tests, or bundled into the packaged app, and runs that file with a system Node, since a packaged Outlore cannot run its own binary as one.
        */
       readonly server: string;
       readonly version: string;
@@ -124,8 +124,12 @@ export const defaultAppsOf = (entry: CatalogEntry) => entry.apps.filter((app) =>
 export const isRunnableOn = (entry: CatalogEntry, platform: NodeJS.Platform) =>
   entry.platform === "Any" || platform === "darwin";
 
+/** An entry whose backend is the Streamable-HTTP one, which is where OAuth sign-in happens. */
+type HttpCatalogEntry = CatalogEntry & { readonly backend: Extract<CatalogBackend, { readonly _tag: "Http" }> };
+
 /** Whether an entry authenticates through the generic MCP OAuth 2.1 browser sign-in flow. */
-export const isOAuthEntry = (entry: CatalogEntry) => entry.backend._tag === "Http" && entry.backend.oauth !== undefined;
+export const isOAuthEntry = (entry: CatalogEntry): entry is HttpCatalogEntry =>
+  entry.backend._tag === "Http" && entry.backend.oauth !== undefined;
 
 /** Whether an entry accepts a static secret (such as an API key or personal access token) stored in the Vault. */
 export const hasStaticSecret = (entry: CatalogEntry) =>
@@ -134,9 +138,55 @@ export const hasStaticSecret = (entry: CatalogEntry) =>
 /** Whether an entry offers both generic MCP OAuth 2.1 browser sign-in and a static Vault secret. */
 export const isDualAuthEntry = (entry: CatalogEntry) => isOAuthEntry(entry) && hasStaticSecret(entry);
 
+/** Which credentials a catalog entry accepts: none, one static key, OAuth 2.1 browser sign-in, or either. */
+export type EntryCredentials =
+  | { readonly _tag: "None" }
+  | { readonly _tag: "Key"; readonly kind: string }
+  | { readonly _tag: "OAuth" }
+  | { readonly _tag: "Either"; readonly kind: string };
+
+/** Derives the tagged credential mode of a catalog entry once, replacing repeated sentinel checks. */
+export const credentialsOf = (entry: CatalogEntry): EntryCredentials => {
+  const usesOAuth = isOAuthEntry(entry);
+  const staticKind = hasStaticSecret(entry) ? entry.secretKind : null;
+  if (usesOAuth && staticKind !== null) return { _tag: "Either", kind: staticKind };
+  if (usesOAuth) return { _tag: "OAuth" };
+  if (staticKind !== null) return { _tag: "Key", kind: staticKind };
+  return { _tag: "None" };
+};
+
+/** Builds a hosted OAuth 2.1 (or dual-auth) catalog entry sharing the standard Streamable-HTTP MCP configuration. */
+export const hostedOAuthEntryOf = (spec: {
+  readonly description: string;
+  readonly id: string;
+  readonly licence?: string;
+  readonly name: string;
+  readonly notice: string;
+  readonly secretKind?: string;
+  readonly tools?: Readonly<Record<string, CatalogTool>>;
+  readonly url: string;
+}): CatalogEntry => ({
+  apps: [],
+  backend: {
+    _tag: "Http",
+    header: "authorization",
+    oauth: { clientName: "Outlore" },
+    prefix: "Bearer ",
+    shouldUseSession: true,
+    url: spec.url,
+  },
+  description: spec.description,
+  id: spec.id,
+  licence: spec.licence ?? hostedServiceLicence,
+  name: spec.name,
+  notice: spec.notice,
+  platform: "Any",
+  secretKind: spec.secretKind ?? oauthSecretKind,
+  tools: spec.tools ?? {},
+});
+
 /**
- * The tools a server lists that the entry does not name: they are asked about on every call, and a test of the pinned
- * version's listing fails on one so a version bump cannot slip a new write in unseen.
+ * The tools a server lists that the entry does not name: they are asked about on every call, and a test of the pinned version's listing fails on one so a version bump cannot slip a new write in unseen.
  */
 export const unnamedToolsOf = (entry: CatalogEntry, listed: ReadonlyArray<string>) =>
   listed.filter((tool) => catalogToolOf(entry, tool) === null);

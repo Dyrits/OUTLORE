@@ -13,7 +13,6 @@ export class OAuthFailure extends Schema.TaggedError<OAuthFailure>()("OAuthFailu
     "Redirect",
     "StateMismatch",
     "Timeout",
-    "Vault",
   ]),
   message: Schema.String,
 }) {}

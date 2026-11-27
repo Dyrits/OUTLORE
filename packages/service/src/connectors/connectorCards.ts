@@ -2,8 +2,9 @@ import type { ConnectorCard, ConnectorToolCard } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { isUsableBy } from "./availability.ts";
-import { type CatalogEntry, catalogToolOf, entryOf, hasStaticSecret, isOAuthEntry, isRunnableOn } from "./catalog.ts";
-import { appleConnectionNeedOf, readStanding, readToolStanding, type StateDependencies } from "./connectorState.ts";
+import { type CatalogEntry, catalogToolOf, credentialsOf, entryOf, isRunnableOn } from "./catalog.ts";
+import { appleConnectionNeedOf, cardNeedsOf } from "./connectorNeeds.ts";
+import { readConnectionState, readStanding, readToolStanding, type StateDependencies } from "./connectorState.ts";
 import {
   type ConnectorRecord,
   readChoices,
@@ -17,7 +18,7 @@ import {
 /** What the card of a connector needs beyond the state reads: the host's platform. */
 export type CardDependencies = StateDependencies & { readonly platform: NodeJS.Platform };
 
-const toolCardsOf = Effect.fnUntraced(function* (
+const readToolCards = Effect.fnUntraced(function* (
   dependencies: CardDependencies,
   entry: CatalogEntry,
   record: ConnectorRecord | null,
@@ -37,24 +38,25 @@ const toolCardsOf = Effect.fnUntraced(function* (
   });
 });
 
-/** The card of one catalog entry, installed or not. */
-export const cardOf = Effect.fnUntraced(function* (dependencies: CardDependencies, entry: CatalogEntry) {
+/** Reads the card of one catalog entry, installed or not. */
+export const readCard = Effect.fnUntraced(function* (dependencies: CardDependencies, entry: CatalogEntry) {
   const provided = Effect.provideService(SqlClient.SqlClient, dependencies.sql);
   const record = yield* readConnectorRecord(entry.id).pipe(provided);
-  const usesOAuth = isOAuthEntry(entry);
-  const staticSecretKind = hasStaticSecret(entry) ? entry.secretKind : null;
+  const credentials = credentialsOf(entry);
+  const usesOAuth = credentials._tag === "OAuth" || credentials._tag === "Either";
+  const secretKinds = credentials._tag === "Key" || credentials._tag === "Either" ? [credentials.kind] : [];
   const base = {
     apps: entry.apps.map((app) => ({
       id: app.id,
       isChosen: record === null ? app.isDefault : (record.apps ?? []).includes(app.id),
       name: app.name,
-      ...(record?.apps?.includes(app.id) ? { permission: dependencies.applePermissionOf(entry.id, app.id) } : {}),
+      ...(record?.apps?.includes(app.id) ? { permission: dependencies.permissions.read(entry.id, app.id) } : {}),
     })),
     description: entry.description,
     id: entry.id,
     name: entry.name,
     notice: entry.notice,
-    secretKinds: staticSecretKind === null ? [] : [staticSecretKind],
+    secretKinds,
     usesOAuth,
   };
   if (record === null) {
@@ -65,29 +67,21 @@ export const cardOf = Effect.fnUntraced(function* (dependencies: CardDependencie
       isEnabled: false,
       needs: isMissingMac ? "Needs a Mac." : null,
       state: isMissingMac ? "NeedsMac" : "NotInstalled",
-      tools: yield* toolCardsOf(dependencies, entry, null),
+      tools: yield* readToolCards(dependencies, entry, null),
     } satisfies ConnectorCard;
   }
-  const standing = yield* readStanding(dependencies, entry, record);
   const choices = yield* readChoices(entry.id).pipe(provided);
   const needs =
     entry.apps.length > 0
-      ? appleConnectionNeedOf(dependencies, record)
-      : (record.needs ??
-        (standing.isConnected || (entry.secretKind === null && !usesOAuth)
-          ? null
-          : usesOAuth && staticSecretKind !== null
-            ? `Sign in in your browser or add your ${staticSecretKind} below.`
-            : usesOAuth
-              ? "Sign in in your browser to connect."
-              : `Add your ${entry.secretKind} below.`));
+      ? appleConnectionNeedOf(dependencies.permissions, record)
+      : cardNeedsOf(entry, record, yield* readConnectionState(dependencies.vault, entry, record));
   return {
     ...base,
     borderlandsChoice: choices.borderlands,
     isEnabled: record.isEnabled,
     needs,
     state: record.isRemoving ? "Removing" : needs === null ? "Ready" : "NeedsConnecting",
-    tools: yield* toolCardsOf(dependencies, entry, record),
+    tools: yield* readToolCards(dependencies, entry, record),
   } satisfies ConnectorCard;
 });
 
@@ -99,8 +93,8 @@ export type PanelTool = {
   readonly name: string;
 };
 
-/** The last-listed tools of the connectors the thread can use, those switched off included and marked as off. */
-export const panelToolsOf = Effect.fnUntraced(function* (dependencies: CardDependencies, threadId: string) {
+/** Reads the last-listed tools of the connectors the thread can use, those switched off included and marked as off. */
+export const readPanelTools = Effect.fnUntraced(function* (dependencies: CardDependencies, threadId: string) {
   const provided = Effect.provideService(SqlClient.SqlClient, dependencies.sql);
   const subject = yield* readSubject(threadId).pipe(provided);
   const tools: Array<PanelTool> = [];

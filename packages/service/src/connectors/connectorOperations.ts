@@ -4,7 +4,7 @@ import { SqlClient } from "effect/sql";
 import { invalid, notFound } from "../core/index.ts";
 import type { ConnectorCalls } from "./calls.ts";
 import { catalogToolOf, defaultAppsOf, entryOf, isRunnableOn, isToolName } from "./catalog.ts";
-import { readOfferedTools, type StateDependencies } from "./connectorState.ts";
+import { narrowSnapshotsToOffered, type StateDependencies } from "./connectorState.ts";
 import {
   type ChoiceLevel,
   hasQuest,
@@ -18,10 +18,9 @@ import {
   writeToolSwitch,
 } from "./connectorStore.ts";
 
-// The owner's changes to connectors (connectors blueprint, Stored choices; Stopping at once). Each runs inside the
-// caller's transaction, which is the command's; a change that can take a tool from a thread narrows the turn snapshots
-// there, after its own write and before it commits, so a call that reads its snapshot afterwards finds the tool gone and
-// a tool switched off and on again within a turn stays off. The calls underway are stopped once the command commits.
+// The owner's changes to connectors (connectors blueprint, Stored choices; Stopping at once).
+// Each runs inside the caller's transaction, which is the command's; a change that can take a tool from a thread narrows the turn snapshots there, after its own write and before it commits, so a call that reads its snapshot afterwards finds the tool gone and a tool switched off and on again within a turn stays off.
+// The calls underway are stopped once the command commits.
 
 /** What the operations need. */
 export type OperationDependencies = StateDependencies & {
@@ -30,15 +29,6 @@ export type OperationDependencies = StateDependencies & {
 };
 
 const provide = (dependencies: OperationDependencies) => Effect.provideService(SqlClient.SqlClient, dependencies.sql);
-
-/** Removes from every thread's snapshot what the stored choices no longer offer it. */
-const narrow = (dependencies: OperationDependencies) =>
-  dependencies.calls.narrowSnapshots((threadId) =>
-    readOfferedTools(dependencies, threadId).pipe(
-      Effect.map((tools) => new Set(tools.map((tool) => tool.listedName))),
-      Effect.orDie,
-    ),
-  );
 
 /** The installed, not-being-removed connector with this id, or the refusal the owner reads. */
 const requireInstalled = Effect.fnUntraced(function* (dependencies: OperationDependencies, connectorId: string) {
@@ -100,7 +90,7 @@ export const setConnectorSwitch = Effect.fnUntraced(function* (
           : { _tag: "Borderlands" };
     yield* writeChoice(request.connectorId, stored, choice === "Reset" ? null : choice).pipe(provide(dependencies));
   }
-  yield* narrow(dependencies);
+  yield* narrowSnapshotsToOffered(dependencies);
 });
 
 /** Switches one tool of a connector on or off, for every thread. */
@@ -114,7 +104,7 @@ export const setConnectorTool = Effect.fnUntraced(function* (
     dependencies.listing.cachedTools(entry.id).some((tool) => tool.name === request.tool);
   if (!isToolName(request.tool) || !isKnown) return yield* notFound(`${entry.name} has no tool of that name.`);
   yield* writeToolSwitch(entry.id, request.tool, request.isOn).pipe(provide(dependencies));
-  yield* narrow(dependencies);
+  yield* narrowSnapshotsToOffered(dependencies);
 });
 
 /** Chooses which apps are on; an app turned off takes its tools from every thread. */
@@ -127,7 +117,7 @@ export const chooseApps = Effect.fnUntraced(function* (
   const known = new Set(entry.apps.map((app) => app.id));
   if (request.apps.some((app) => !known.has(app))) return yield* invalid("That app is not one of its apps.");
   yield* writeApps(entry.id, [...new Set(request.apps)]).pipe(provide(dependencies));
-  yield* narrow(dependencies);
+  yield* narrowSnapshotsToOffered(dependencies);
 });
 
 /** The first step of a removal: the connector is unusable at once, and its calls underway are stopped on commit. */
@@ -136,5 +126,5 @@ export const startRemoval = Effect.fnUntraced(function* (dependencies: Operation
   const record = entry === null ? null : yield* readConnectorRecord(connectorId).pipe(provide(dependencies));
   if (entry === null || record === null) return yield* notFound("That connector is not installed.");
   if (!record.isRemoving) yield* markRemoving(connectorId).pipe(provide(dependencies));
-  yield* narrow(dependencies);
+  yield* narrowSnapshotsToOffered(dependencies);
 });

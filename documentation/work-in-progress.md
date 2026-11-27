@@ -1,5 +1,10 @@
 # Work in progress
 
+## Connectors OAuth sign-in fixes and Standards refactors · 2026-11-27 · built and tested against mock OAuth server; live Atlassian sign-in and window check pending
+
+CHG-0785 in `0.2.12-Pre-Alpha`: fixed the OAuth sign-in failure paths (`SPEC-1`–`SPEC-4`, `SPEC-8`, `SPEC-10`–`SPEC-12`, `BUG-1`, `BUG-3`–`BUG-7`), completed all 25 Standards refactors (`STD-1`–`STD-25`), and updated `documentation/capabilities/connectors/specifications.md` (`SPEC-5`–`SPEC-7`, `SPEC-9`). [Proof](verification/2026-11-27-connectors-oauth-review-and-fixes.md): Biome clean, service + app typecheck exit 0, 374 connector tests + 11 app tests passed.
+Next: retry Atlassian OAuth sign-in in the desktop window to observe the exact error message (RFC 6749 error code or HTTP status) or confirm it connects cleanly, and check the Cancel button during the browser wait.
+
 ## Thread root draws chips · 2026-11-27 · built and tested; window and phone not looked at
 
 CHG-0784 in `0.2.12-Pre-Alpha`: `ThreadRootView` in `apps/app/src/conversation/conversationEntries.tsx` draws an owner's root with `ChipText` (it drew `Markdown`, so `$debug` showed as plain words above "1 reply"); test `apps/app/test/conversation/threadRootChips.test.ts`. Root cause found by rendering the root with a skill in it: the pure `chipsOf` already returned the chip, the component never called it.

@@ -1,7 +1,6 @@
 import { Context, type Effect } from "effect";
 
-// The two things the gateway needs from `work/`, which it does not import (connectors blueprint, Shape): asking the owner
-// about a call, and putting a warning line in a thread. `work/` supplies both.
+// The two things the gateway needs from `work/`, which it does not import (connectors blueprint, Shape): asking the owner about a call, and putting a warning line in a thread. `work/` supplies both.
 
 /** One call that needs the owner's answer, in the catalog's words; never in words a server gave. */
 export type ToolUse = {

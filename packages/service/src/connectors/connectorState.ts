@@ -1,16 +1,9 @@
-import type { ApplePermissionStatus } from "@outlore/contracts";
-import { Effect } from "effect";
+import { Effect, Match } from "effect";
 import { SqlClient } from "effect/sql";
+import type { ApplePermissions } from "./applePermissions.ts";
 import { isToolOffered, type Standing, type ToolStanding } from "./availability.ts";
-import {
-  type CatalogEntry,
-  catalogToolOf,
-  entryOf,
-  hasStaticSecret,
-  isOAuthEntry,
-  listedNameOf,
-  oauthSecretKind,
-} from "./catalog.ts";
+import type { ConnectorCalls } from "./calls.ts";
+import { type CatalogEntry, catalogToolOf, credentialsOf, entryOf, listedNameOf, oauthSecretKind } from "./catalog.ts";
 import {
   type ConnectorRecord,
   readChoices,
@@ -19,7 +12,7 @@ import {
   readSubject,
 } from "./connectorStore.ts";
 import type { ToolListing } from "./toolListing.ts";
-import type { VaultPort } from "./vaultPort.ts";
+import type { VaultPort, VaultUnavailable } from "./vaultPort.ts";
 
 // What decides whether a thread is offered a connector's tool, read from the store (connectors blueprint, Who may use what).
 
@@ -37,39 +30,51 @@ export type OfferedConnectorTool = {
 
 /** What the state reads need. */
 export type StateDependencies = {
-  readonly applePermissionOf: (connectorId: string, app: string) => ApplePermissionStatus;
   readonly catalog: ReadonlyArray<CatalogEntry>;
   readonly listing: ToolListing;
+  readonly permissions: ApplePermissions;
   readonly sql: SqlClient.SqlClient;
   readonly vault: VaultPort["Service"];
 };
 
-/** Whether the owner has given the connector what it needs: no refused sign-in recorded and a valid credential held. */
-const isConnected = (vault: VaultPort["Service"], entry: CatalogEntry, record: ConnectorRecord) => {
-  if (record.needs !== null) return Effect.succeed(false);
-  if (entry.secretKind === null && !isOAuthEntry(entry)) return Effect.succeed(true);
-  if (isOAuthEntry(entry)) {
-    return vault.holds(entry.id, oauthSecretKind).pipe(
-      Effect.catch(() => Effect.succeed(false)),
-      Effect.flatMap((hasOAuth) =>
-        hasOAuth || !hasStaticSecret(entry) || entry.secretKind === null
-          ? Effect.succeed(hasOAuth)
-          : vault.holds(entry.id, entry.secretKind).pipe(Effect.catch(() => Effect.succeed(false))),
-      ),
-    );
-  }
-  return entry.secretKind === null
-    ? Effect.succeed(true)
-    : vault.holds(entry.id, entry.secretKind).pipe(Effect.catch(() => Effect.succeed(false)));
+/** Connection status read from the Vault, surfacing why the Vault could not answer instead of hiding it as missing. */
+export type ConnectionState = {
+  readonly isConnected: boolean;
+  readonly vaultReason: VaultUnavailable["reason"] | null;
 };
 
-/** The actionable card state when any chosen Apple app still needs a check or a grant. */
-export const appleConnectionNeedOf = (dependencies: StateDependencies, record: ConnectorRecord) => {
-  const apps = record.apps ?? [];
-  if (apps.length === 0) return "Choose at least one Apple app.";
-  return apps.some((app) => dependencies.applePermissionOf(record.id, app) !== "Allowed")
-    ? "Some chosen apps need permission on the computer."
-    : null;
+const holdsOrReason = (
+  vault: VaultPort["Service"],
+  connectorId: string,
+  kind: string,
+): Effect.Effect<ConnectionState> =>
+  vault.holds(connectorId, kind).pipe(
+    Effect.map((isConnected): ConnectionState => ({ isConnected, vaultReason: null })),
+    Effect.catchTag("VaultUnavailable", (failure) =>
+      Effect.succeed<ConnectionState>({ isConnected: false, vaultReason: failure.reason }),
+    ),
+  );
+
+/** Whether the owner has given the connector what it needs, and any Vault unavailability preventing the check. */
+export const readConnectionState = (
+  vault: VaultPort["Service"],
+  entry: CatalogEntry,
+  record: ConnectorRecord,
+): Effect.Effect<ConnectionState> => {
+  if (record.needs !== null) return Effect.succeed({ isConnected: false, vaultReason: null });
+  return Match.valueTags(credentialsOf(entry), {
+    Either: ({ kind }) =>
+      holdsOrReason(vault, entry.id, oauthSecretKind).pipe(
+        Effect.flatMap((oauth) =>
+          oauth.isConnected || oauth.vaultReason !== null
+            ? Effect.succeed(oauth)
+            : holdsOrReason(vault, entry.id, kind),
+        ),
+      ),
+    Key: ({ kind }) => holdsOrReason(vault, entry.id, kind),
+    None: () => Effect.succeed({ isConnected: true, vaultReason: null }),
+    OAuth: () => holdsOrReason(vault, entry.id, oauthSecretKind),
+  });
 };
 
 /** The standing of one installed connector. */
@@ -83,8 +88,8 @@ export const readStanding = Effect.fnUntraced(function* (
     choices,
     isConnected:
       entry.apps.length > 0
-        ? (record.apps ?? []).some((app) => dependencies.applePermissionOf(entry.id, app) === "Allowed")
-        : yield* isConnected(dependencies.vault, entry, record),
+        ? (record.apps ?? []).some((app) => dependencies.permissions.read(entry.id, app) === "Allowed")
+        : (yield* readConnectionState(dependencies.vault, entry, record)).isConnected,
     isEnabled: record.isEnabled,
     isInstalled: true,
     isRemoving: record.isRemoving,
@@ -98,7 +103,7 @@ export const readToolStanding = Effect.fnUntraced(function* (dependencies: State
     chosenApps:
       record.apps === null
         ? null
-        : new Set(record.apps.filter((app) => dependencies.applePermissionOf(record.id, app) === "Allowed")),
+        : new Set(record.apps.filter((app) => dependencies.permissions.read(record.id, app) === "Allowed")),
     offTools,
   } satisfies ToolStanding;
 });
@@ -129,3 +134,14 @@ export const readOfferedTools = Effect.fnUntraced(function* (dependencies: State
   }
   return offered;
 });
+
+/** Removes from every thread's snapshot what the stored choices no longer offer it; the reads run in the caller's transaction. */
+export const narrowSnapshotsToOffered = (
+  dependencies: StateDependencies & { readonly calls: ConnectorCalls["Service"] },
+) =>
+  dependencies.calls.narrowSnapshots((threadId) =>
+    readOfferedTools(dependencies, threadId).pipe(
+      Effect.map((tools) => new Set(tools.map((tool) => tool.listedName))),
+      Effect.orDie,
+    ),
+  );

@@ -20,9 +20,11 @@ const reasons: Record<VaultState["_tag"], VaultUnavailable["reason"]> = {
 const unavailableOf = (vault: Vault["Service"], failure: VaultFailure): Effect.Effect<VaultUnavailable> =>
   failure.kind === "NotProtected"
     ? Effect.succeed(new VaultUnavailable({ reason: "NotProtected" }))
-    : failure.kind === "Unavailable"
-      ? Effect.map(vault.state, (state) => new VaultUnavailable({ reason: reasons[state._tag] }))
-      : Effect.succeed(new VaultUnavailable({ reason: "Failed" }));
+    : failure.kind === "Invalid"
+      ? Effect.succeed(new VaultUnavailable({ reason: "Invalid" }))
+      : failure.kind === "Unavailable"
+        ? Effect.map(vault.state, (state) => new VaultUnavailable({ reason: reasons[state._tag] }))
+        : Effect.succeed(new VaultUnavailable({ reason: "Failed" }));
 
 /** The port's failure for one Vault failure: a missing secret is SecretMissing, anything else VaultUnavailable. */
 const portFailureOf = (

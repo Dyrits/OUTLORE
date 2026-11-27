@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
-import { applePermissionReportOf, probeToolOf } from "../../src/connectors/applePermission.ts";
+import { probeApplePermissions, probeToolOf } from "../../src/connectors/applePermission.ts";
 import { BackendFailure, type ConnectorBackend } from "../../src/connectors/backend.ts";
 import { appleEntry } from "../../src/connectors/catalogEntries.ts";
 import type { CatalogEntry } from "../../src/connectors/index.ts";
@@ -64,7 +64,7 @@ describe("the probe tool of an app", () => {
 describe("the Apple permission report over a fake backend", () => {
   const reportOf = (tools: ReadonlyArray<ScriptedTool>, apps: ReadonlyArray<string>) => {
     const backend: ConnectorBackend = fakeBackendOf(tools, []).backend;
-    return Effect.runPromise(applePermissionReportOf(permEntry, apps, backend));
+    return Effect.runPromise(probeApplePermissions(permEntry, apps, backend));
   };
 
   it("reports Allowed for an app whose probe answered", async () => {
@@ -92,7 +92,7 @@ describe("the Apple permission report over a fake backend", () => {
       tools: { ...permEntry.tools, "list-note-folders": { app: "notes", class: "Write", summary: "writes" } },
     };
     const backend = fakeBackendOf(permTools, []).backend;
-    const report = await Effect.runPromise(applePermissionReportOf(withoutNotes, ["notes"], backend));
+    const report = await Effect.runPromise(probeApplePermissions(withoutNotes, ["notes"], backend));
     expect(report.apps).toEqual([{ app: "notes", status: "NotAskedYet" }]);
   });
 

@@ -1,13 +1,11 @@
 import { Context, Deferred, Effect, Layer } from "effect";
 import { newId } from "../core/index.ts";
 
-// The calls underway and each run's per-turn tool snapshot (connectors blueprint, Gateway, the timing contract). The
-// blueprint keeps policy revisions to order a call against a switch; this keeps the same order with less: a switch narrows
-// the snapshots of the threads it touches inside its own transaction, so a call that reads its snapshot after the
-// switch was made finds the tool gone, and the calls underway are stopped once the transaction has committed.
+// The calls underway and each run's per-turn tool snapshot (connectors blueprint, Gateway, the timing contract).
+// The blueprint keeps policy revisions to order a call against a switch; this keeps the same order with less: a switch narrows the snapshots of the threads it touches inside its own transaction, so a call that reads its snapshot after the switch was made finds the tool gone, and the calls underway are stopped once the transaction has committed.
 
 /** One call underway. The `(connector, tool, thread)` tuple can name several at once, so each has its own identifier. */
-export type Invocation = {
+export interface Invocation {
   readonly connector: string;
   readonly id: string;
   /** Whether the call has been handed to the connector's server: a stopped write then may already have happened. */
@@ -18,11 +16,11 @@ export type Invocation = {
   /** Completed when the call is stopped, by a switch. */
   readonly stopped: Deferred.Deferred<void>;
   readonly threadId: string;
-};
+}
 
 /**
- * What the registry keeps for the gateway: calls underway and each run's snapshot of its tools for the turn. A run is
- * named by its key; a thread's main run is keyed by the thread's id, which is how a call finds its snapshot.
+ * What the registry keeps for the gateway: calls underway and each run's snapshot of its tools for the turn.
+ * A run is named by its key; a thread's main run is keyed by the thread's id, which is how a call finds its snapshot.
  */
 export class ConnectorCalls extends Context.Service<
   ConnectorCalls,

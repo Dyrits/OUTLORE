@@ -27,8 +27,7 @@ export function ConnectorsSection({
   onSave: (change: SettingsChange) => void;
   settings: Settings;
 }) {
-  const [revision, setRevision] = useState(0);
-  const { data, error } = useServiceQuery(client, { _tag: "ListConnectors" }, `connectors:${revision}`);
+  const { data, error, refresh } = useServiceQuery(client, { _tag: "ListConnectors" }, "connectors");
   const [chosen, setChosen] = useState<string | null>(null);
   const tabs = [
     ...(data ?? []).map((card) => ({ id: card.id, label: card.name })),
@@ -61,7 +60,7 @@ export function ConnectorsSection({
           card={card}
           client={client}
           key={card.id}
-          onChanged={() => setRevision((value) => value + 1)}
+          onChanged={refresh}
           onOpenVault={() => setChosen("vault" satisfies OtherTab)}
         />
       )}
