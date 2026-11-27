@@ -61,7 +61,7 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the Companion mention with `@` (CHG-0781: built, merged on `main`, tested only against the fake harness; window, phone and live harness not checked), read the [current handoff](.agents/handoffs/2026-11-27-0745-companion-mention-built.md). Handoffs are shared and committed.
+- To resume the Companion mention with `@` (CHG-0781: built, merged and pushed to `main`, tested only against the fake harness; window, phone and live harness not checked), read the [current handoff](.agents/handoffs/2026-11-27-0810-companion-mention-pushed.md). Handoffs are shared and committed.
 
 - To resume the composer's send and stop buttons, now filled with the accent so they read in every theme (built, no screen seen yet), read the [current handoff](.agents/handoffs/2026-11-27-0045-composer-send-button-visibility.md). Handoffs are shared and committed.
 
