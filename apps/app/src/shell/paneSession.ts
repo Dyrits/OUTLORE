@@ -1,7 +1,7 @@
 import type { ThreadId } from "@outlore/contracts";
 import { type ChronicleTarget, matchesThread } from "../conversation/chronicleTarget";
 import { foldedPane, type PaneMemory, prunedMemory, revealedPane } from "./paneChain";
-import { isThreadPane, type PaneId, starterId } from "./paneIds";
+import { channelId, isThreadPane, type PaneId, starterId } from "./paneIds";
 
 /** Owner choices that persist for the pane row during a session. */
 export type PaneSession = {
@@ -27,18 +27,21 @@ type PaneAction =
 
 /** Applies one pane gesture or navigation event. */
 export const paneSessionOf = (session: PaneSession, action: PaneAction): PaneSession => {
-  const { expanded, focused, memory } = session;
+  const { expanded, focused, listRequest, memory } = session;
   if (action.type === "chain")
     return {
       ...session,
       expanded: expanded !== null && action.chain.includes(expanded) ? expanded : null,
       focused: action.deepest,
+      listRequest: listRequest !== null && action.chain.includes(listRequest.id) ? listRequest : null,
       memory: prunedMemory(memory, action.chain),
     };
   if (action.type === "quest")
     return {
       ...session,
       expanded: expanded === starterId ? null : expanded,
+      // Keep a channel's Quests list request across quest initialization while clearing any quest's stale Errands request.
+      listRequest: listRequest?.id === channelId ? listRequest : null,
       memory: memory.shown.has(starterId)
         ? { ...memory, shown: new Set([...memory.shown].filter((id) => id !== starterId)) }
         : memory,
@@ -56,7 +59,7 @@ export const paneSessionOf = (session: PaneSession, action: PaneAction): PaneSes
   if (action.type === "target") {
     const id = action.target.threadId === null ? action.quest : action.thread;
     return id !== null && matchesThread(action.target, id, id === action.quest)
-      ? { ...session, expanded: null, focused: id, memory: revealedPane(memory, id) }
+      ? { ...session, expanded: null, focused: id, listRequest: null, memory: revealedPane(memory, id) }
       : session;
   }
   if (action.type === "fold") {

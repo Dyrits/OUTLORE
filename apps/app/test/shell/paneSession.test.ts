@@ -99,4 +99,38 @@ describe("keeping the pane session", () => {
     expect(opened.memory.folded.has(quest)).toBe(false);
     expect(opened.memory.shown.has(quest)).toBe(true);
   });
+
+  it("drops a stale Errands list request when switching quests so returning to the first quest does not reopen Errands", () => {
+    const firstQuest = ThreadId.make("first-quest");
+    const otherQuest = ThreadId.make("other-quest");
+    const afterList = paneSessionOf(initial(), { id: firstQuest, type: "list" });
+    const onOtherQuest = paneSessionOf(
+      paneSessionOf(afterList, { chain: [channelId, otherQuest, starterId], deepest: otherQuest, type: "chain" }),
+      { type: "quest" },
+    );
+    const returned = paneSessionOf(
+      paneSessionOf(onOtherQuest, { chain: [channelId, firstQuest, starterId], deepest: firstQuest, type: "chain" }),
+      { type: "quest" },
+    );
+    expect(returned.listRequest).toBeNull();
+  });
+
+  it("keeps a channel Quests list request across quest initialization while the channel stays in the chain", () => {
+    const requested = paneSessionOf(initial(), { id: channelId, type: "list" });
+    const afterMount = paneSessionOf(paneSessionOf(requested, { chain: [channelId], deepest: null, type: "chain" }), {
+      type: "quest",
+    });
+    expect(afterMount.listRequest).toEqual({ id: channelId });
+  });
+
+  it("clears a stale list request when opening a Chronicle target", () => {
+    const requested = paneSessionOf(initial(), { id: quest, type: "list" });
+    const opened = paneSessionOf(requested, {
+      quest,
+      target: { messageId: null, questionId: null, threadId: null, waitingAt: null },
+      thread: errand,
+      type: "target",
+    });
+    expect(opened.listRequest).toBeNull();
+  });
 });
