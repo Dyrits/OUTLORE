@@ -39,7 +39,7 @@ export const targetIndexOf = (entries: ReadonlyArray<Entry>, target: ChronicleTa
         entry._tag === "Message" &&
         // A Companion's answer is drawn in the frame of its message, so its entry is that message's.
         (entry.message.id === target.messageId ||
-          (entry.answers ?? []).some((answer) => answer.message.id === target.messageId)),
+          (entry.frameMessages ?? []).some((item) => item.message.id === target.messageId)),
   );
   if (index >= 0) return index;
   if (target.questionId === null && target.waitingAt !== null) {

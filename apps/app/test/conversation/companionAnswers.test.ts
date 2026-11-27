@@ -1,4 +1,13 @@
-import { companionTokenOf, MessageId, type MissionDetail, MissionId, ThreadId } from "@outlore/contracts";
+import {
+  type CompanionFrameContext,
+  companionTokenOf,
+  type Message,
+  MessageId,
+  type MissionDetail,
+  MissionId,
+  ThreadId,
+  type ThreadRoot,
+} from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import { targetIndexOf } from "../../src/conversation/chronicleTarget";
 import { matchingMessages } from "../../src/conversation/conversationSearch";
@@ -6,21 +15,46 @@ import { entriesOf } from "../../src/conversation/entries";
 import { sideChatsOf } from "../../src/conversation/sideChats";
 import { detailOf } from "../fixtures/conversation";
 
-// A Companion's answer is drawn inside a frame under the owner's message it answers (thread-messaging, Mentioning a Companion with @; CHG-0785, CHG-0786).
+// A Companion's answer is drawn inside a frame under the owner's message it answers (thread-messaging, Mentioning a Companion with @; CHG-0786, CHG-0787).
 
 const mention = companionTokenOf({ accountId: null, harness: "claude", model: "claude-haiku-5-5" });
+const topThreadId = ThreadId.make("top");
 
 type Row = {
-  companionFrameContext?: "None" | "Shared" | "Outdated";
+  companionFrameContext?: CompanionFrameContext;
   companionFrameId?: string;
   id: string;
   isCompanionAnswer?: boolean;
   model?: string | null;
   replyToMessageId?: string;
-  sender: string;
+  sender: Message["sender"];
   sentAt: number;
   text: string;
 };
+
+const messageOf = (row: Row, index: number): Message => ({
+  attachments: [],
+  ...(row.companionFrameContext === undefined ? {} : { companionFrameContext: row.companionFrameContext }),
+  ...(row.companionFrameId === undefined ? {} : { companionFrameId: MessageId.make(row.companionFrameId) }),
+  fromMissionId: null,
+  fromThreadId: null,
+  fromTitle: null,
+  harness: null,
+  id: MessageId.make(row.id),
+  ...(row.isCompanionAnswer === undefined ? {} : { isCompanionAnswer: row.isCompanionAnswer }),
+  isDelivered: true,
+  isQueued: false,
+  isResult: false,
+  model: row.model ?? null,
+  replyToMessageId: row.replyToMessageId === undefined ? null : MessageId.make(row.replyToMessageId),
+  sender: row.sender,
+  sentAt: row.sentAt,
+  sequence: index + 1,
+  text: row.text,
+  threadId: topThreadId,
+  usage: null,
+});
+
 const owner = (id: string, sentAt: number, text = id): Row => ({ id, sender: "user", sentAt, text });
 const reply = (id: string, sentAt: number): Row => ({ id, sender: "agent", sentAt, text: id });
 const answer = (id: string, sentAt: number, to: string): Row => ({
@@ -29,12 +63,25 @@ const answer = (id: string, sentAt: number, to: string): Row => ({
   replyToMessageId: to,
 });
 
-const detailWith = (messages: ReadonlyArray<Row>, root?: string) =>
-  ({
-    ...detailOf([], "top"),
-    messages,
-    thread: { id: "top", ...(root === undefined ? {} : { root: { id: root, sender: "user", sentAt: 1, text: root } }) },
-  }) as unknown as MissionDetail;
+const rootOf = (id: string): ThreadRoot => ({
+  attachments: [],
+  fromTitle: null,
+  harness: null,
+  id: MessageId.make(id),
+  model: null,
+  sender: "user",
+  sentAt: 1,
+  text: id,
+});
+
+const detailWith = (rows: ReadonlyArray<Row>, root?: string): MissionDetail => {
+  const base = detailOf([], "top");
+  return {
+    ...base,
+    messages: rows.map(messageOf),
+    thread: { ...base.thread, ...(root === undefined ? {} : { root: rootOf(root) }) },
+  };
+};
 
 describe("a Companion's answer in its tagged message's frame", () => {
   it("hangs under the tagged message however many messages came between", () => {
@@ -50,21 +97,21 @@ describe("a Companion's answer in its tagged message's frame", () => {
     expect(entries.map((entry) => entry.key)).toEqual(["asked", "main", "later", "last"]);
     const asked = entries[0];
     expect(asked).toMatchObject({ _tag: "Message" });
-    expect(asked?._tag === "Message" ? asked.answers?.map((item) => item.key) : null).toEqual(["haiku"]);
-    expect(asked?._tag === "Message" ? asked.answers?.[0]?.message.sender : null).toBe("agent");
+    expect(asked?._tag === "Message" ? asked.frameMessages?.map((item) => item.key) : null).toEqual(["haiku"]);
+    expect(asked?._tag === "Message" ? asked.frameMessages?.[0]?.message.sender : null).toBe("agent");
   });
 
   it("keeps several answers to one message in the order they were written", () => {
     const entries = entriesOf(
       detailWith(
         [owner("asked", 10), answer("slow", 30, "asked"), answer("quick", 20, "asked")].sort(
-          (a, b) => a.sentAt - b.sentAt,
+          (current, next) => current.sentAt - next.sentAt,
         ),
       ),
     );
     expect(entries.map((entry) => entry.key)).toEqual(["asked"]);
     const [asked] = entries;
-    expect(asked?._tag === "Message" ? asked.answers?.map((item) => item.key) : null).toEqual(["quick", "slow"]);
+    expect(asked?._tag === "Message" ? asked.frameMessages?.map((item) => item.key) : null).toEqual(["quick", "slow"]);
   });
 
   it("stands on its own just after a tagged message that is not drawn, rather than at the end", () => {
@@ -99,7 +146,7 @@ describe("a Companion's answer in its tagged message's frame", () => {
     );
     expect(entries.map((entry) => entry.key)).toEqual(["asked", "brief", "b"]);
     expect(entries[1]).toMatchObject({ replyToText: "asked" });
-    expect(entries[0]).not.toHaveProperty("answers");
+    expect(entries[0]).not.toHaveProperty("frameMessages");
   });
 
   it("carries the reply lines hung from the answer with it", () => {
@@ -112,7 +159,7 @@ describe("a Companion's answer in its tagged message's frame", () => {
       },
     ];
     const [asked] = entriesOf(detailWith([owner("asked", 10), answer("haiku", 20, "asked")]), false, anchors);
-    expect(asked?._tag === "Message" ? asked.answers?.[0]?.replies?.map((item) => item.key) : null).toEqual([
+    expect(asked?._tag === "Message" ? asked.frameMessages?.[0]?.replies?.map((item) => item.key) : null).toEqual([
       "anchored:t",
     ]);
   });
@@ -152,7 +199,7 @@ describe("in-frame follow-ups and side-chat jump list", () => {
     );
     expect(entries.map((entry) => entry.key)).toEqual(["asked", "main"]);
     const [asked] = entries;
-    expect(asked?._tag === "Message" ? asked.answers?.map((item) => item.key) : null).toEqual([
+    expect(asked?._tag === "Message" ? asked.frameMessages?.map((item) => item.key) : null).toEqual([
       "haiku-1",
       "follow",
       "haiku-2",

@@ -1,61 +1,57 @@
-import type { Message } from "@outlore/contracts";
+import type { AttachmentId, Message, Skill } from "@outlore/contracts";
 import { type ReactNode, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { newRequestId, type ServiceClient } from "../foundation/client";
 import { styles } from "../foundation/styles";
 import { colors } from "../foundation/theme";
-import type { CompanionAnswer } from "./entries";
+import { Composer } from "../ui/controls";
+import type { FrameMessage } from "./entries";
 
 /**
- * One framed Companion exchange: the opening message, its follow-ups and answers, a compact inline follow-up input,
- * and an opt-in control to share the frame as passive context for the main Companion's next turn (CHG-0786).
+ * One framed Companion exchange: the opening message, its follow-ups and answers, a compact inline follow-up composer
+ * with `@`-mention support, and an opt-in control to share the frame as passive context for the main Companion's next
+ * turn (CHG-0787).
  */
 export function ExchangeFrame({
-  answers,
   client,
+  frameMessages,
   opening,
   openingMessage,
   renderItem,
+  skills,
+  workspacePath,
 }: {
-  answers: ReadonlyArray<CompanionAnswer>;
   client: ServiceClient;
+  frameMessages: ReadonlyArray<FrameMessage>;
   opening: ReactNode;
   openingMessage: Message;
-  renderItem: (item: CompanionAnswer) => ReactNode;
+  renderItem: (item: FrameMessage) => ReactNode;
+  skills: ReadonlyArray<Skill>;
+  workspacePath: string | null;
 }) {
   const [isReplying, setReplying] = useState(false);
-  const [draft, setDraft] = useState("");
-  const [isBusy, setBusy] = useState(false);
+  const [isSharing, setSharing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const hasAnswer = answers.some((item) => item.message.sender === "agent");
+  const hasAnswer = frameMessages.some((item) => item.message.sender === "agent");
   const contextState = openingMessage.companionFrameContext ?? "None";
 
-  const sendFollowUp = () => {
-    const text = draft.trim();
-    if (text === "" || isBusy) return;
-    setBusy(true);
+  const sendFollowUp = async (text: string, attachmentIds: ReadonlyArray<AttachmentId>) => {
     setError(null);
-    void client
-      .request({
-        _tag: "SendMessage",
-        attachmentIds: [],
-        delivery: null,
-        frameMessageId: openingMessage.id,
-        requestId: newRequestId(),
-        text,
-        threadId: openingMessage.threadId,
-      })
-      .then(() => {
-        setDraft("");
-        setReplying(false);
-      })
-      .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : "Could not send follow-up."))
-      .finally(() => setBusy(false));
+    await client.request({
+      _tag: "SendMessage",
+      attachmentIds,
+      delivery: null,
+      frameMessageId: openingMessage.id,
+      requestId: newRequestId(),
+      text,
+      threadId: openingMessage.threadId,
+    });
+    setReplying(false);
   };
 
   const shareContext = () => {
-    if (isBusy) return;
-    setBusy(true);
+    if (isSharing) return;
+    setSharing(true);
     setError(null);
     void client
       .request({
@@ -64,20 +60,20 @@ export function ExchangeFrame({
         threadId: openingMessage.threadId,
       })
       .catch((cause: unknown) => setError(cause instanceof Error ? cause.message : "Could not add to context."))
-      .finally(() => setBusy(false));
+      .finally(() => setSharing(false));
   };
 
   return (
     <View style={styles.exchangeFrame}>
       {opening}
-      {answers.map(renderItem)}
+      {frameMessages.map(renderItem)}
       <View style={local.footer}>
         <View style={local.actions}>
           <Pressable
             accessibilityRole="button"
-            disabled={isBusy}
+            disabled={isSharing}
             onPress={() => {
-              setReplying((open) => !open);
+              setReplying((isCurrentlyReplying) => !isCurrentlyReplying);
               setError(null);
             }}
             style={local.actionButton}
@@ -85,7 +81,12 @@ export function ExchangeFrame({
             <Text style={styles.link}>{isReplying ? "Cancel" : "Follow up"}</Text>
           </Pressable>
           {hasAnswer && contextState === "None" && (
-            <Pressable accessibilityRole="button" disabled={isBusy} onPress={shareContext} style={local.actionButton}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={isSharing}
+              onPress={shareContext}
+              style={local.actionButton}
+            >
               <Text style={styles.link}>Add to context</Text>
             </Pressable>
           )}
@@ -93,7 +94,12 @@ export function ExchangeFrame({
           {hasAnswer && contextState === "Outdated" && (
             <>
               <Text style={styles.muted}>In context</Text>
-              <Pressable accessibilityRole="button" disabled={isBusy} onPress={shareContext} style={local.actionButton}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={isSharing}
+                onPress={shareContext}
+                style={local.actionButton}
+              >
                 <Text style={styles.link}>Update context</Text>
               </Pressable>
             </>
@@ -101,25 +107,12 @@ export function ExchangeFrame({
         </View>
         {isReplying && (
           <View style={local.composer}>
-            <TextInput
-              accessibilityLabel="Follow up in this frame"
-              editable={!isBusy}
-              multiline
-              onChangeText={setDraft}
-              onSubmitEditing={sendFollowUp}
-              placeholder="Follow up with this Companion…"
-              placeholderTextColor={colors.textMuted}
-              style={[styles.input, local.input]}
-              value={draft}
+            <Composer
+              mentions={{ canAskCompanions: true, client, workspacePath }}
+              onSend={sendFollowUp}
+              placeholder="Follow up with this Companion… (@ to add another)"
+              skills={skills}
             />
-            <Pressable
-              accessibilityRole="button"
-              disabled={isBusy || draft.trim() === ""}
-              onPress={sendFollowUp}
-              style={styles.button}
-            >
-              <Text style={styles.buttonText}>{isBusy ? "Sending…" : "Send"}</Text>
-            </Pressable>
           </View>
         )}
         {error !== null && (
@@ -135,7 +128,6 @@ export function ExchangeFrame({
 const local = StyleSheet.create({
   actionButton: { paddingVertical: 4 },
   actions: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  composer: { alignItems: "flex-end", flexDirection: "row", gap: 8, marginTop: 6 },
+  composer: { marginTop: 6 },
   footer: { borderTopColor: colors.border, borderTopWidth: 1, marginTop: 4, paddingTop: 6 },
-  input: { flex: 1, maxHeight: 120, minHeight: 36 },
 });

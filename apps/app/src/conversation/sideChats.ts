@@ -12,11 +12,11 @@ export type SideChatItem = {
   preview: string;
 };
 
-/** All framed Companion side conversations in the feed, newest first, for the conversation bar's jump list (CHG-0786). */
+/** All framed Companion side conversations in the feed, newest first, for the conversation bar's jump list (CHG-0787). */
 export const sideChatsOf = (entries: ReadonlyArray<Entry>): ReadonlyArray<SideChatItem> =>
   newestFirstOf(entries).flatMap((entry, index): Array<SideChatItem> => {
-    if (entry._tag !== "Message" || entry.answers === undefined || entry.answers.length === 0) return [];
-    const answers = entry.answers.filter((item) => item.message.sender === "agent");
+    if (entry._tag !== "Message" || entry.frameMessages === undefined || entry.frameMessages.length === 0) return [];
+    const answers = entry.frameMessages.filter((item) => item.message.sender === "agent");
     if (answers.length === 0) return [];
     const models = [
       ...new Set(answers.map((item) => (item.message.model ? modelLabelOf(item.message.model) : "Companion"))),

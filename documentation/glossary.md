@@ -58,6 +58,9 @@ _Avoid_: Side thread, tangent
 A message one thread sends another, in either direction along the tree, or to any thread it references with `@`, that can ask for a reply.
 _Avoid_: Ping, notification
 
+**Companion frame** (UI jump label: **side chat**):
+A bordered exchange inside a quest or errand conversation opened by mentioning one or more Companions with `@`, holding the opening message, its inline follow-ups, and each Companion's answers; stays out of the main Companion's context until the owner shares it with **Add to context** (CHG-0786, CHG-0787).
+
 **Comment**:
 A note the owner writes on a message of a quest or errand, on the whole message or on a passage selected in it. Comments wait, per thread, in the browser's storage and go with the owner's next message in that thread, as a block in its text.
 _Avoid_: Annotation, review note

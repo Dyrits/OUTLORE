@@ -23,7 +23,7 @@ const windows: Readonly<Record<string, { readonly label: string; readonly minute
  * The group of a model, or of the name the CLI gives a group: the Gemini models, and every other model (the CLI names the latter "Claude and GPT models").
  * A limit is labelled with it, and a Companion is refused only by the limits of its own group.
  */
-export const antigravityGroupOf = (name: string) => (/^gemini/i.test(name) ? "Gemini" : "Others");
+const antigravityGroupOf = (name: string) => (/^gemini/i.test(name) ? "Gemini" : "Others");
 
 /** The separator between a limit's group and its window in a label. */
 const groupSeparator = " · ";
@@ -32,7 +32,7 @@ const groupSeparator = " · ";
 const limitLabelOf = (group: string, window: string) => `${group}${groupSeparator}${window}`;
 
 /** Whether a limit applies to a model: a grouped limit applies only to models of its group, and a limit with no group applies to every model. */
-export const antigravityLimitAppliesTo = (label: string, model: string) => {
+export const isAntigravityLimitFor = (label: string, model: string) => {
   const separator = label.indexOf(groupSeparator);
   return separator === -1 || label.slice(0, separator) === antigravityGroupOf(model);
 };

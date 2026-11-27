@@ -1,6 +1,6 @@
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
-import { antigravityLimitAppliesTo, HarnessTools, harnessLabels } from "../harness/index.ts";
+import { HarnessTools, harnessLabels, isAntigravityLimitFor } from "../harness/index.ts";
 import { configDirectoryOf } from "./accounts.ts";
 import { type AccountRef, reachedScopesOf } from "./budgetScopes.ts";
 import type { CompanionThread } from "./companionThreads.ts";
@@ -26,8 +26,8 @@ const resetTextOf = (resetsAt: number, now: number) => {
  * Whether a window of the plan's limits applies to the Companion's model.
  * Only Antigravity names groups ("Gemini · Weekly", "Others · Weekly"), so there a grouped window binds only models of its group; any other window binds every model of its harness.
  */
-const limitAppliesTo = (companion: CompanionThread, label: string) =>
-  companion.harness !== "antigravity" || antigravityLimitAppliesTo(label, companion.model);
+const isLimitFor = (companion: CompanionThread, label: string) =>
+  companion.harness !== "antigravity" || isAntigravityLimitFor(label, companion.model);
 
 /**
  * The used-up, not yet reset windows of the plan's limits that apply to the Companion's model, told as one reason, or null when none.
@@ -37,7 +37,7 @@ const usageLimitOf = Effect.fnUntraced(function* (companion: CompanionThread, ac
   const reading = yield* (yield* PlanLimits).latest(account);
   const now = yield* Clock.currentTimeMillis;
   const used = (reading?.windows ?? []).filter(
-    (window) => window.usedPercent >= 100 && window.resetsAt > now && limitAppliesTo(companion, window.label),
+    (window) => window.usedPercent >= 100 && window.resetsAt > now && isLimitFor(companion, window.label),
   );
   if (used.length === 0) return null;
   const resetsAt = Math.max(...used.map((window) => window.resetsAt));

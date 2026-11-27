@@ -1,4 +1,4 @@
-import type { Message, MissionDetail, ThreadSummary } from "@outlore/contracts";
+import type { MissionDetail, ThreadSummary } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { notFound } from "../core/index.ts";
@@ -20,6 +20,7 @@ import { readOwnCopy } from "./ownCopies.ts";
 import { isPendingDeliveryOf } from "./pendingMessages.ts";
 import { isErrandArchivedOf, isNotArchivedErrandOf, isQuestKindOf } from "./questVisibility.ts";
 import { listThreadSuggestions } from "./suggestionStore.ts";
+import { hydrateThreadMessages, readThreadMessageRows } from "./threadMessages.ts";
 import { readWorkingFolder } from "./workingFolders.ts";
 import { readThreadWorkspace } from "./workspaces.ts";
 
@@ -122,61 +123,7 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
   const workspace = yield* readThreadWorkspace(selected.id);
   const ownCopy = yield* readOwnCopy(selected.id);
   const workingFolder = yield* readWorkingFolder(selected.id, workspace?.path ?? null);
-  const messages = yield* sql<
-    Omit<
-      Message,
-      | "attachments"
-      | "companionFrameContext"
-      | "companionFrameId"
-      | "isCompanionAnswer"
-      | "isResult"
-      | "isQueued"
-      | "isDelivered"
-      | "usage"
-    > & {
-      companionFrameId: Message["id"] | null;
-      isCompanionAnswer: number;
-      isResult: number;
-      isDelivered: number;
-      isQueued: number;
-      usageCacheCreation: number | null;
-      usageCacheRead: number | null;
-      usageEstimate: number | null;
-      usageInput: number | null;
-      usageOutput: number | null;
-      usageReported: number | null;
-    }
-  >`
-      SELECT m.id, m.thread_id AS threadId, m.reply_to_message_id AS replyToMessageId, m.sender_kind AS sender, m.model, m.harness, m.text, m.sequence, m.sent_at AS sentAt,
-        m.sender_thread_id AS fromThreadId, COALESCE(s.title, m.sender_title) AS fromTitle, m.is_result AS isResult,
-        EXISTS (SELECT 1 FROM companion_exchanges ce WHERE ce.reply_message_id = m.id) AS isCompanionAnswer,
-        COALESCE(
-          (SELECT COALESCE(ce.frame_message_id, ce.owner_message_id) FROM companion_exchanges ce WHERE ce.reply_message_id = m.id LIMIT 1),
-          (SELECT ce.frame_message_id FROM companion_exchanges ce WHERE ce.owner_message_id = m.id AND ce.frame_message_id IS NOT NULL AND ce.frame_message_id != m.id LIMIT 1)
-        ) AS companionFrameId,
-        CASE WHEN ${isQuestKindOf(sql, "owner", "sm")} THEN s.mission_id END AS fromMissionId,
-        (m.is_queued = 1 AND m.delivered_turn_id IS NULL) AS isQueued, (m.delivered_turn_id IS NOT NULL OR m.is_conversation_only = 1) AS isDelivered,
-        ru.input AS usageInput, ru.output AS usageOutput, ru.cache_read AS usageCacheRead,
-        ru.cache_creation AS usageCacheCreation, ru.estimate AS usageEstimate, ru.reported AS usageReported
-      FROM messages m LEFT JOIN reply_usage ru ON ru.message_id = m.id LEFT JOIN threads s ON s.id = m.sender_thread_id LEFT JOIN missions sm ON sm.id = s.mission_id
-      WHERE m.thread_id = ${selected.id} ORDER BY m.sequence`;
-  const frameStates = yield* sql<{ frameId: string; sharedCount: number; unsharedCount: number }>`
-    SELECT COALESCE(frame_message_id, owner_message_id) AS frameId,
-      SUM(CASE WHEN state = 'Answered' AND is_context_shared = 1 THEN 1 ELSE 0 END) AS sharedCount,
-      SUM(CASE WHEN state = 'Answered' AND is_context_shared = 0 THEN 1 ELSE 0 END) AS unsharedCount
-    FROM companion_exchanges
-    WHERE parent_thread_id = ${selected.id}
-    GROUP BY COALESCE(frame_message_id, owner_message_id)`;
-  const frameContextById = new Map(
-    frameStates.map((row) => [
-      row.frameId,
-      row.sharedCount > 0 && row.unsharedCount > 0
-        ? ("Outdated" as const)
-        : row.sharedCount > 0
-          ? ("Shared" as const)
-          : ("None" as const),
-    ]),
-  );
+  const messages = yield* readThreadMessageRows(selected.id);
   // Chronicler and realm/Borderlands channels are channels rather than threads hanging from a root, so they pin none.
   // For quests and errands, the message the thread hangs from is pinned above its own messages.
   // A thread with no anchor, or one whose opening message repeats its anchor, is its own root: its first message is pinned and left out of the replies, so the first reply is the agent's.
@@ -224,43 +171,7 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
     handovers: yield* listHandovers(selected.id),
     loreChanges: yield* listThreadLoreChanges(selected.id),
     loreGauge: yield* readGauge(selected.id),
-    messages: messages.map(
-      ({
-        companionFrameId,
-        usageCacheCreation,
-        usageCacheRead,
-        usageEstimate,
-        usageInput,
-        usageOutput,
-        usageReported,
-        ...message
-      }) => {
-        const companionFrameContext = frameContextById.get(message.id);
-        return {
-          ...message,
-          attachments: cards.get(message.id) ?? [],
-          ...(companionFrameContext === undefined ? {} : { companionFrameContext }),
-          ...(companionFrameId === null ? {} : { companionFrameId }),
-          isCompanionAnswer: message.isCompanionAnswer === 1,
-          isDelivered: message.isDelivered === 1,
-          isQueued: message.isQueued === 1,
-          isResult: message.isResult === 1,
-          usage:
-            usageInput === null
-              ? null
-              : {
-                  estimated: usageEstimate,
-                  reported: usageReported,
-                  tokens: {
-                    cacheCreation: usageCacheCreation ?? 0,
-                    cacheRead: usageCacheRead ?? 0,
-                    input: usageInput,
-                    output: usageOutput ?? 0,
-                  },
-                },
-        };
-      },
-    ),
+    messages: yield* hydrateThreadMessages(selected.id, messages, cards),
     mission: summary,
     questions,
     suggestions,

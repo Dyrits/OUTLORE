@@ -12,7 +12,7 @@ export const SendMessage = Schema.TaggedStruct("SendMessage", {
   attachmentIds: AttachmentIds,
   /** Steer or Queue while the thread runs; null uses the owner's default. */
   delivery: Schema.NullOr(MessageDelivery),
-  /** When set, sends a follow-up inside that Companion frame and addresses its Companions by default (CHG-0786). */
+  /** When set, sends a follow-up inside that Companion frame and addresses its Companions by default (CHG-0787). */
   frameMessageId: Schema.optionalKey(MessageId),
   /** The realm's folder the owner attached, for the Chronicler: a quest it opens starts there. */
   realmPath: Schema.optionalKey(Schema.NullOr(Schema.String)),
@@ -24,7 +24,7 @@ export const SendMessage = Schema.TaggedStruct("SendMessage", {
   /** Where the owner has Chronicler open from, for Chronicler: the screen, and its quest when it is one. */
   viewing: Schema.optionalKey(Schema.NullOr(Viewing)),
 });
-/** Shares a Companion frame's answered exchanges as passive context for the main Companion's next turn (CHG-0786). */
+/** Shares a Companion frame's answered exchanges as passive context for the main Companion's next turn (CHG-0787). */
 export const ShareCompanionFrame = Schema.TaggedStruct("ShareCompanionFrame", {
   frameMessageId: MessageId,
   threadId: ThreadId,

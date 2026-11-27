@@ -167,15 +167,17 @@ export function EntryView({
     />
   );
   const message = bubble(entry.message, entry);
-  if (entry.answers === undefined || entry.answers.length === 0) return message;
+  if (entry.frameMessages === undefined || entry.frameMessages.length === 0) return message;
   // The message, follow-ups, and Companion answers sit in one frame; answers omit the redundant "Replying to" line.
   return (
     <ExchangeFrame
-      answers={entry.answers}
       client={client}
+      frameMessages={entry.frameMessages}
       opening={message}
       openingMessage={entry.message}
-      renderItem={(answer) => bubble(answer.message, { fromQuest: null, key: answer.key, replies: answer.replies })}
+      renderItem={(item) => bubble(item.message, { fromQuest: null, key: item.key, replies: item.replies })}
+      skills={skills}
+      workspacePath={workspacePath}
     />
   );
 }

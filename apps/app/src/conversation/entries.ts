@@ -28,15 +28,15 @@ export type AnchoredReply =
   | { _tag: "ThreadOpened"; key: string; thread: ThreadSummary }
   | ({ _tag: "QuestLink" } & QuestLink);
 
-/** A mentioned Companion's answer, drawn in the frame of the message it answers, with the reply lines hung from it. */
-export type CompanionAnswer = { key: string; message: Message; replies?: ReadonlyArray<AnchoredReply> };
+/** A follow-up or mentioned Companion's answer drawn inside the opening message's frame, with the reply lines hung from it. */
+export type FrameMessage = { key: string; message: Message; replies?: ReadonlyArray<AnchoredReply> };
 
 /** One entry of a thread's conversation, with the key the list keeps it by. */
 export type Entry = { key: string; at: number } & (
   | {
       _tag: "Message";
-      /** The Companions' answers to this message, oldest first, drawn with it as one framed exchange. */
-      answers?: ReadonlyArray<CompanionAnswer>;
+      /** Follow-ups and Companion answers inside this message's frame, oldest first. */
+      frameMessages?: ReadonlyArray<FrameMessage>;
       message: Message;
       fromQuest: MissionId | null;
       replies?: ReadonlyArray<AnchoredReply>;
@@ -199,14 +199,14 @@ export const entriesOf = (
     ...visibleMessages
       .filter((message) => !framedIds.has(message.id))
       .map((message): Entry => {
-        const answers = answersUnder.get(message.id)?.map(
-          (answer): CompanionAnswer => ({
-            key: answer.id,
-            message: answer,
-            ...repliesFieldOf(answer.id),
+        const frameMessages = answersUnder.get(message.id)?.map(
+          (item): FrameMessage => ({
+            key: item.id,
+            message: item,
+            ...repliesFieldOf(item.id),
           }),
         );
-        const tagged = message.replyToMessageId == null ? undefined : anchorCard.get(message.replyToMessageId);
+        const tagged = message.replyToMessageId == null ? null : (anchorCard.get(message.replyToMessageId) ?? null);
         // The raw token of a Companion is no words to quote.
         const taggedText = isCompanionAnswer(message)
           ? withoutCompanionTokens(tagged?.text ?? "")
@@ -214,8 +214,8 @@ export const entriesOf = (
         return {
           _tag: "Message",
           // A Companion's answer whose message is not drawn (the pinned root) stands just after that message.
-          at: isCompanionAnswer(message) && tagged !== undefined ? tagged.sentAt + afterReply : message.sentAt,
-          ...(answers === undefined ? {} : { answers }),
+          at: isCompanionAnswer(message) && tagged !== null ? tagged.sentAt + afterReply : message.sentAt,
+          ...(frameMessages === undefined ? {} : { frameMessages }),
           fromQuest:
             (message.sender === "thread" || message.sender === "system") && message.fromMissionId !== detail.mission.id
               ? message.fromMissionId

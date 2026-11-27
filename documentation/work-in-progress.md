@@ -9,7 +9,8 @@ Next: look at the framed exchange, inline follow-up composer, context controls, 
 
 ## Usage-limit refusal by model group · 2026-11-27 · built and tested; no live Antigravity turn
 
-CHG-0788 in `0.2.12-Pre-Alpha`: `usageLimitOf` in `packages/service/src/work/companionRefusals.ts` refused a Gemini Companion for the used-up "Others · Weekly" window; it now keeps only the windows that cover the Companion's model (`antigravityLimitAppliesTo`, next to `antigravityGroupOf` in `antigravityPlanLimits.ts`) and tells the latest reset when several are used up.
+CHG-0788 in `0.2.12-Pre-Alpha`: `usageLimitOf` in `packages/service/src/work/companionRefusals.ts` refused a Gemini Companion for the used-up "Others · Weekly" window; it now keeps only the windows that cover the Companion's model (`isAntigravityLimitFor`, next to `antigravityGroupOf` in `antigravityPlanLimits.ts`) and tells the latest reset when several are used up.
+[Proof](verification/2026-11-27-companion-usage-limit-by-model-group.md): the refusal tests fail on the starting commit, the review round's frame tests fail at the pre-refactor tip, and both pass on the end state.
 Next: send one live Antigravity turn to a Gemini model and to a Claude or GPT model on the account whose "Others" window is used up.
 
 ## Connectors OAuth sign-in fixes and Standards refactors · 2026-11-27 · built and tested against mock OAuth server; live Atlassian sign-in and window check pending

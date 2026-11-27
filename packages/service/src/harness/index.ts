@@ -13,7 +13,7 @@ export {
 } from "./acpProviderDefinition.ts";
 export { acpProviders } from "./acpProviderRoster.ts";
 export { makeAcpProviderHarness, probeAcpProviderModels, readAcpProviderSignIn } from "./acpProviders.ts";
-export { antigravityLimitAppliesTo } from "./antigravityPlanLimits.ts";
+export { isAntigravityLimitFor } from "./antigravityPlanLimits.ts";
 export { type ClaudeOptions, claudeHarnessLayer, makeClaudeHarness } from "./claude.ts";
 export { claudeChoicesOf, claudePromptAnswerOf } from "./claudeChoices.ts";
 export { type CodexOptions, makeCodexHarness } from "./codex.ts";

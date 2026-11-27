@@ -1,7 +1,7 @@
 # Proof: In-frame Companion follow-ups, opt-in context, and side-chat jump menu
 
 - **Verdict:** proven for migration, contracts, service follow-up and opt-in context behavior, client grouping, and side-chat jump list; awaiting human judgment for desktop and phone UI
-- **Work:** branch `mission/companion-answer-grouped-under-its-messa-c2182b35` (CHG-0786 on top of CHG-0785)
+- **Work:** branch `mission/companion-answer-grouped-under-its-messa-c2182b35` (CHG-0787 on top of CHG-0786)
 - **Agreement:** owner's `$iterate` answers ("Yes to all", 2026-11-27): inline follow-up inside the frame addressing its Companions by default (allowing `@` to pull in more), private by default with opt-in **Add to context** / **Update context** (passive, never waking the main Companion), and a conditional jump menu in the conversation bar; [thread-messaging specifications](../capabilities/thread-messaging/specifications.md#mentioning-a-companion-with-)
 - **Environment:** macOS (Darwin), Bun, Biome, TypeScript, and Vitest from the repository; no desktop window or phone was driven.
 - **Date:** 2026-11-27

@@ -166,12 +166,13 @@ export const latestStoreMigrations = {
     yield* sql`CREATE INDEX companion_exchanges_companion ON companion_exchanges (companion_thread_id, state)`;
     yield* sql`CREATE INDEX companion_exchanges_parent ON companion_exchanges (parent_thread_id, state)`;
   }),
-  // Framed Companion follow-ups and opt-in context sharing (thread-messaging, CHG-0786): exchanges in a side
+  // Framed Companion follow-ups and opt-in context sharing (thread-messaging, CHG-0787): exchanges in a side
   // conversation share one `frame_message_id` and stay out of the main Companion's context until `is_context_shared` is set.
   "0083_companion_frames": Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
     yield* sql`ALTER TABLE companion_exchanges ADD COLUMN frame_message_id TEXT`;
     yield* sql`ALTER TABLE companion_exchanges ADD COLUMN is_context_shared INTEGER NOT NULL DEFAULT 0`;
+    yield* sql`UPDATE companion_exchanges SET is_context_shared = 1 WHERE context_turn_id IS NOT NULL`;
     yield* sql`CREATE INDEX companion_exchanges_frame ON companion_exchanges (parent_thread_id, frame_message_id)`;
   }),
 };

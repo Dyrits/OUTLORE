@@ -1,11 +1,11 @@
-import { messageMarks } from "@outlore/contracts";
+import { type CompanionFrameContext, messageMarks } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { newId, notFound, touchMission } from "../core/index.ts";
 import { type CompanionThread, readCompanionOfThread } from "./companionThreads.ts";
 import { appendMessage } from "./messageStorage.ts";
 
-// One question to a Companion and its answer (thread-messaging, Mentioning a Companion with @; CHG-0781, CHG-0786): the
+// One question to a Companion and its answer (thread-messaging, Mentioning a Companion with @; CHG-0781, CHG-0787): the
 // owner's message stays in the conversation and wakes nobody; the Companion's thread answers it; the answer is copied
 // into the frame labelled with the model, and stays out of the main Companion's context until the owner shares the frame.
 
@@ -15,7 +15,7 @@ export const refusalLead = "Cannot answer:";
 /** Records that a message asked a Companion, with the message delivered to the Companion's thread. Callers run it in a transaction. */
 export const openExchange = Effect.fnUntraced(function* (exchange: {
   readonly companionThreadId: string;
-  readonly frameMessageId?: string | null;
+  readonly frameMessageId: string;
   readonly ownerMessageId: string;
   readonly parentThreadId: string;
   readonly promptMessageId: string | null;
@@ -23,9 +23,8 @@ export const openExchange = Effect.fnUntraced(function* (exchange: {
   const sql = yield* SqlClient.SqlClient;
   const id = yield* newId;
   const now = yield* Clock.currentTimeMillis;
-  const frameId = exchange.frameMessageId ?? exchange.ownerMessageId;
   yield* sql`INSERT INTO companion_exchanges (id, parent_thread_id, companion_thread_id, owner_message_id, frame_message_id, prompt_message_id, state, asked_at)
-      VALUES (${id}, ${exchange.parentThreadId}, ${exchange.companionThreadId}, ${exchange.ownerMessageId}, ${frameId},
+      VALUES (${id}, ${exchange.parentThreadId}, ${exchange.companionThreadId}, ${exchange.ownerMessageId}, ${exchange.frameMessageId},
         ${exchange.promptMessageId}, 'Asked', ${now})`;
   return id;
 });
@@ -147,7 +146,29 @@ export const readCompanionContext = Effect.fnUntraced(function* (parentThreadId:
 });
 
 /**
- * Shares every answered exchange of a Companion frame as passive context for the main Companion's next turn (CHG-0786).
+ * Context-sharing state of each Companion frame in a conversation, keyed by the frame's opening message id (CHG-0787).
+ * Pre-migration rows already delivered to a turn (`context_turn_id IS NOT NULL`) count as shared.
+ */
+export const readFrameContexts = Effect.fnUntraced(function* (parentThreadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const rows = yield* sql<{ frameId: string; sharedCount: number; unsharedCount: number }>`
+    SELECT COALESCE(frame_message_id, owner_message_id) AS frameId,
+      SUM(CASE WHEN state = 'Answered' AND (is_context_shared = 1 OR context_turn_id IS NOT NULL) THEN 1 ELSE 0 END) AS sharedCount,
+      SUM(CASE WHEN state = 'Answered' AND is_context_shared = 0 AND context_turn_id IS NULL THEN 1 ELSE 0 END) AS unsharedCount
+    FROM companion_exchanges
+    WHERE parent_thread_id = ${parentThreadId}
+    GROUP BY COALESCE(frame_message_id, owner_message_id)`;
+  const contexts = new Map<string, CompanionFrameContext>();
+  for (const row of rows)
+    contexts.set(
+      row.frameId,
+      row.sharedCount > 0 && row.unsharedCount > 0 ? "Outdated" : row.sharedCount > 0 ? "Shared" : "None",
+    );
+  return contexts;
+});
+
+/**
+ * Shares every answered exchange of a Companion frame as passive context for the main Companion's next turn (CHG-0787).
  * Calling it again after later follow-ups shares only the newly answered exchanges without waking the thread.
  */
 export const shareCompanionFrame = Effect.fnUntraced(function* (parentThreadId: string, frameMessageId: string) {

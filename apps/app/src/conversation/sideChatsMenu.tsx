@@ -6,7 +6,7 @@ import type { MessageMatch } from "./conversationSearch";
 import type { Entry } from "./entries";
 import { sideChatsOf } from "./sideChats";
 
-/** Conditional jump menu in the conversation bar listing framed Companion side conversations (CHG-0786). */
+/** Conditional jump menu in the conversation bar listing framed Companion side conversations (CHG-0787). */
 export function SideChatsMenu({
   entries,
   onSelect,
@@ -25,7 +25,7 @@ export function SideChatsMenu({
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: isOpen }}
-        onPress={() => setOpen((open) => !open)}
+        onPress={() => setOpen((isCurrentlyOpen) => !isCurrentlyOpen)}
         style={local.trigger}
       >
         <Text style={styles.link}>{isOpen ? `Close (${label})` : label}</Text>

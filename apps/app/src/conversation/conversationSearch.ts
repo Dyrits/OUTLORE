@@ -9,7 +9,7 @@ export function matchingMessages(entries: ReadonlyArray<Entry>, query: string): 
   if (term === "") return [];
   return newestFirstOf(entries).flatMap((entry, index) =>
     entry._tag === "Message" &&
-    [entry.message, ...(entry.answers ?? []).map((answer) => answer.message)].some((message) =>
+    [entry.message, ...(entry.frameMessages ?? []).map((item) => item.message)].some((message) =>
       message.text.toLowerCase().includes(term),
     )
       ? [{ index, key: entry.key }]

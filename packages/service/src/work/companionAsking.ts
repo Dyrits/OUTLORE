@@ -1,7 +1,8 @@
 import type { HarnessName } from "@outlore/contracts";
 import {
-  type CompanionToken,
+  type CompanionReference,
   companionTokensOf,
+  maxCompanionMentions,
   type SendToParentScope,
   withoutCompanionTokens,
 } from "@outlore/contracts";
@@ -88,10 +89,8 @@ const promptOf = (words: string, context: { readonly kept: ReadonlyArray<string>
         ]),
   ].join("\n\n");
 
-type CompanionTarget = Pick<CompanionToken, "accountId" | "harness" | "model">;
-
 /** The distinct Companions already participating in a frame, in the order they were first asked. */
-const frameCompanionsOf = Effect.fnUntraced(function* (parentThreadId: string, frameMessageId: string) {
+const readFrameCompanions = Effect.fnUntraced(function* (parentThreadId: string, frameMessageId: string) {
   const sql = yield* SqlClient.SqlClient;
   const rows = yield* sql<{ accountId: string | null; harness: string; model: string }>`
     SELECT t.harness, t.account_id AS accountId, t.model
@@ -99,22 +98,22 @@ const frameCompanionsOf = Effect.fnUntraced(function* (parentThreadId: string, f
     WHERE e.parent_thread_id = ${parentThreadId} AND COALESCE(e.frame_message_id, e.owner_message_id) = ${frameMessageId}
     GROUP BY t.harness, t.account_id, t.model
     ORDER BY MIN(e.asked_at), MIN(e.rowid)`;
-  return rows.map((row): CompanionTarget => ({ accountId: row.accountId, harness: row.harness, model: row.model }));
+  return rows.map((row): CompanionReference => ({ accountId: row.accountId, harness: row.harness, model: row.model }));
 });
 
-/** Combines a frame's Companions with any newly `@`-mentioned ones, deduplicated and capped at five. */
+/** Combines a frame's Companions with any newly `@`-mentioned ones, deduplicated and capped at `maxCompanionMentions`. */
 const mergeCompanionTokens = (
-  existing: ReadonlyArray<CompanionTarget>,
-  mentioned: ReadonlyArray<CompanionTarget>,
-): ReadonlyArray<CompanionTarget> => {
+  existing: ReadonlyArray<CompanionReference>,
+  mentioned: ReadonlyArray<CompanionReference>,
+): ReadonlyArray<CompanionReference> => {
   const seen = new Set<string>();
-  const combined: Array<CompanionTarget> = [];
+  const combined: Array<CompanionReference> = [];
   for (const token of [...existing, ...mentioned]) {
     const key = `${token.harness}:${token.accountId ?? "-"}:${token.model}`;
     if (seen.has(key)) continue;
     seen.add(key);
     combined.push(token);
-    if (combined.length >= 5) break;
+    if (combined.length >= maxCompanionMentions) break;
   }
   return combined;
 };
@@ -128,8 +127,8 @@ export const askCompanions = Effect.fnUntraced(function* (
   parentThreadId: string,
   ownerMessageId: string,
   text: string,
-  tokens: ReadonlyArray<CompanionTarget>,
-  frameMessageId?: string | null,
+  tokens: ReadonlyArray<CompanionReference>,
+  frameMessageId: string,
 ) {
   const sql = yield* SqlClient.SqlClient;
   const words = withoutCompanionTokens(text);
@@ -153,7 +152,7 @@ export const askCompanions = Effect.fnUntraced(function* (
     });
     yield* openExchange({
       companionThreadId: companion.threadId,
-      frameMessageId: frameMessageId ?? ownerMessageId,
+      frameMessageId,
       ownerMessageId,
       parentThreadId,
       promptMessageId: promptId,
@@ -185,27 +184,17 @@ export const insertOwnerMessage = Effect.fnUntraced(function* (message: {
   const sql = yield* SqlClient.SqlClient;
   const isChronicler = yield* isChroniclerThread(threadId);
   const mentioned = isChronicler ? [] : companionTokensOf(text);
+  let tokens: ReadonlyArray<CompanionReference>;
   if (frameMessageId !== null) {
     if (isChronicler) return yield* notFound("No such side conversation.");
-    const existing = yield* frameCompanionsOf(threadId, frameMessageId);
-    const tokens = mergeCompanionTokens(existing, mentioned);
-    if (tokens.length === 0) return yield* notFound("No such side conversation.");
-    const { messageId } = yield* insertMessage({
-      attachmentIds,
-      fromThreadId: null,
-      isConversationOnly: true,
-      isQueued: false,
-      isResult: false,
-      text,
-      threadId,
-      viewing,
-    });
-    yield* sql`UPDATE messages SET reply_to_message_id = ${frameMessageId} WHERE id = ${messageId}`;
-    const threadsToWake = yield* askCompanions(threadId, messageId, text, tokens, frameMessageId);
-    return { threadsToWake, value: { messageId } };
+    const existing = yield* readFrameCompanions(threadId, frameMessageId);
+    if (existing.length === 0) return yield* notFound("No such side conversation.");
+    tokens = mergeCompanionTokens(existing, mentioned);
+  } else {
+    if (mentioned.length === 0)
+      return yield* insertUserMessage(threadId, text, isQueued, attachmentIds, realmPath, viewing, sentToParent);
+    tokens = mentioned;
   }
-  if (mentioned.length === 0)
-    return yield* insertUserMessage(threadId, text, isQueued, attachmentIds, realmPath, viewing, sentToParent);
   const { messageId } = yield* insertMessage({
     attachmentIds,
     fromThreadId: null,
@@ -216,6 +205,8 @@ export const insertOwnerMessage = Effect.fnUntraced(function* (message: {
     threadId,
     viewing,
   });
-  const threadsToWake = yield* askCompanions(threadId, messageId, text, mentioned, messageId);
+  if (frameMessageId !== null)
+    yield* sql`UPDATE messages SET reply_to_message_id = ${frameMessageId} WHERE id = ${messageId}`;
+  const threadsToWake = yield* askCompanions(threadId, messageId, text, tokens, frameMessageId ?? messageId);
   return { threadsToWake, value: { messageId } };
 });

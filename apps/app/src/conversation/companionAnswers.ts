@@ -1,7 +1,7 @@
 import type { Message, MessageId } from "@outlore/contracts";
 
 // A mentioned Companion's answer and any follow-up inside its frame belong under the frame's opening message
-// (thread-messaging, Mentioning a Companion with @; CHG-0785, CHG-0786), not where each was written.
+// (thread-messaging, Mentioning a Companion with @; CHG-0786, CHG-0787), not where each was written.
 
 /** Whether the host sent the message as a Companion's answer to a message of the conversation. */
 export const isCompanionAnswer = (message: Message): boolean =>
