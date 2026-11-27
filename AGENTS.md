@@ -61,9 +61,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume connectors OAuth sign-in fixes, Standards refactors, and specification updates (CHG-0785: all 25 Standards findings, OAuth failure-path fixes, UI refresh/Cancel, and spec updates committed on `main` at `69723d9b`; live Atlassian sign-in and desktop Cancel check pending), read the [current handoff](.agents/handoffs/2026-11-27-1133-connectors-oauth-review-and-fixes.md). Handoffs are shared and committed.
+
 - To resume tracking inspirations' latest changes (2026-11-27 primary-source sweep merged into `documentation/inspirations.md` with four research notes; Antigravity `/usage` compliance flag, CLI 1.5.16 multi-account env fix, and candidate ideas ready for backlog triage), read the [current handoff](.agents/handoffs/2026-11-27-1120-inspirations-tracking.md). Handoffs are shared and committed.
 
 - To resume the first message of a thread drawing the owner's chips (CHG-0784: `$debug` showed as plain words above "1 reply"; built and committed, window and phone not looked at), read the [current handoff](.agents/handoffs/2026-11-27-1028-thread-root-chips.md). Handoffs are shared and committed.
-
-- To resume the phone bar's remarks (CHG-0782, CHG-0783: dot on the Quests tab, quarter-second hold, creation rows in each sheet, top bar in the desktop's order, the realm's keep on the Realms tab; built and tested, no phone check yet), read the [current handoff](.agents/handoffs/2026-11-27-0940-phone-bar-realm-keep.md). Handoffs are shared and committed.
 
