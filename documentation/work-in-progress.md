@@ -1,5 +1,10 @@
 # Work in progress
 
+## Turn scope · 2026-11-27 · built and tested; one session on the branch `worktree/turn-scope`, merge pending
+
+CHG-0780 in `0.2.10-Pre-Alpha`: architecture audit candidate 2. A turn opens a scope (`work/turnScopes.ts`) under a run key, and the seven thread-keyed stores of its run state (steering and active map, router route, pool process, Code Mode, connector snapshot, one-time approvals, session id) are keyed by that key and released by one finalizer; the thread's main run is keyed by the thread's id, so nothing changes for the owner or the existing suite. The thread's state and session are written only through a main scope. Built for the Companion mention (thread-messaging blueprint), which is not built. Verified with `bunx biome check packages/service`, `bun run typecheck` (7 workspaces), and `GIT_CONFIG_VALUE_0= CI=1 bun run test packages/service` (250 files passed, 4 skipped; 2,170 tests passed, 24 skipped).
+Next: merge beside the API key and message-mark work (it touches `work/threads.ts` and `work/turnRunner.ts`, where API key work added `prepareAccountKey` before `runTurn`); then the Companion mention gives the tool server and gateway the run from the MCP token (`Endpoints.urlFor` is still per thread) and records a side run's reply and failure.
+
 ## Phone growing bar and side menu · 2026-11-26 · built, refactored, spec fixes green; real phone pending
 
 CHG-0773 in `0.2.10-Pre-Alpha`: the phone's three-tab pill is replaced by a floating bar of Chronicle, Realms, Quests and Errands that grows as a realm and a quest are chosen; a tap shows a choice, a hold of half a second opens a sheet to change it, and each lands in its chat with the composer above the bar. The top bar carries the desktop pane header's actions, and a side menu holds the hosts, the Keep, Reserves and Settings (`phoneBar.tsx`, `phoneChooser.tsx`, `phoneSelection.ts`, `sideMenu.tsx`, `narrowShell.tsx`, `narrowAppScreen.tsx`). Nine HTML drafts are kept in `documentation/art-direction/2026-11-26-mobile-menu-*.html`.

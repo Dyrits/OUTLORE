@@ -23,7 +23,8 @@ export const readCallerRefusal = Effect.fnUntraced(function* (threadId: string, 
  * without MCP. A store that cannot answer fails the turn rather than leave the harness waiting.
  */
 export const askOwnerFor =
-  (approvals: Approvals["Service"], sql: SqlClient.SqlClient, threadId: string) => (prompt: HarnessPrompt) =>
+  (approvals: Approvals["Service"], sql: SqlClient.SqlClient, threadId: string, runKey: string = threadId) =>
+  (prompt: HarnessPrompt) =>
     Effect.gen(function* () {
       const refusal = yield* readCallerRefusal(threadId, "answer_prompt");
       if (refusal !== null) return { isAllowed: false, text: refusal } satisfies PromptAnswer;
@@ -38,7 +39,7 @@ export const askOwnerFor =
         return { isAllowed: answered.isAllowed, text: answered.text } satisfies PromptAnswer;
       }
       if (prompt.choices !== undefined) return promptAnswerOf(yield* approvals.askChoices(threadId, prompt.choices));
-      const decision = yield* approvals.answerPrompt(threadId, prompt);
+      const decision = yield* approvals.answerPrompt(threadId, prompt, null, runKey);
       return {
         isAllowed: decision.isAllowed,
         text: decision.text,

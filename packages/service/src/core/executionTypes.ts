@@ -139,11 +139,17 @@ export type TurnRequest = {
   /** What changes from turn to turn, such as the budget line, given with the turn's message rather than in the starting context, so a change does not restart the harness; null when there is none. */
   readonly note: string | null;
   readonly onEvent: (event: HarnessEvent) => Effect.Effect<void>;
+  /** Names the run the request belongs to: the harness pool keeps one process per run and the router sends steering and interrupts to it by this key. Left out, it is the thread's own id, the key of the thread's main run (work/turnScopes.ts). */
+  readonly runKey?: string;
   /** The harness session to continue, or null for the thread's first turn. */
   readonly sessionId: string | null;
   readonly text: string;
   readonly threadId: string;
 };
+
+/** The key of the run a request belongs to: its own `runKey`, or the thread's id for the thread's main run. */
+export const runKeyOf = (request: Pick<TurnRequest, "runKey" | "threadId">): string =>
+  request.runKey ?? request.threadId;
 
 /** How a turn ended, with what it cost. */
 export type TurnOutcome = {

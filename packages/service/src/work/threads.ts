@@ -22,6 +22,7 @@ import { Suggestions } from "./suggestions.ts";
 import { resumeThread, retryThread } from "./threadRecovery.ts";
 import { type Admitted, admitBackgroundWake, admitTurn, isCurrentTurn } from "./turnAdmission.ts";
 import { makeTurnRunner } from "./turnRunner.ts";
+import { type ActiveTurn, makeTurnScopes } from "./turnScopes.ts";
 import { ScratchRoot } from "./workspaces.ts";
 
 /** Owns thread state and admits at most one turn per thread. */
@@ -53,12 +54,6 @@ export class Threads extends Context.Service<
 
 /** Where each provider account added in Outlore keeps its own folder (provider-accounts). */
 export class AccountsRoot extends Context.Service<AccountsRoot, string>()("outlore/AccountsRoot") {}
-
-/** A turn the harness is running, with the steered messages already written to it. */
-export type ActiveTurn = {
-  readonly turnId: string;
-  readonly written: Set<string>;
-};
 
 /** Threads and their shared command runner over the store and the harness adapters. */
 export const threadsLayer = Layer.effectContext(
@@ -97,8 +92,8 @@ export const threadsLayer = Layer.effectContext(
     const turns = yield* FiberMap.make<string>();
     // Wakes for other threads run here, outside any turn's fiber, which a later wake may replace.
     const background = yield* FiberSet.make();
-    // Turns the harness is running, by thread, so messages can be steered into them.
-    const active = new Map<string, ActiveTurn>();
+    // What each turn holds while the harness runs it, so messages can be steered into the thread's main turn.
+    const scopes = makeTurnScopes({ approvals, connectorGateway, endpoints, harness });
 
     // Provisional recovery until the recovery decision is settled: a process that
     // ended mid-turn leaves no trustworthy Underway state, and nothing is replayed.
@@ -122,7 +117,7 @@ export const threadsLayer = Layer.effectContext(
         turn.written.add(message.id);
         const text = message.text;
         // Not taken: the turn just ended, and the message starts the next one.
-        if (!(yield* harness.steer(threadId, { id: message.id, images: imagesOf(message.attachments), text })))
+        if (!(yield* scopes.steer(threadId, { id: message.id, images: imagesOf(message.attachments), text })))
           turn.written.delete(message.id);
       }
     }, Effect.orDie);
@@ -142,16 +137,15 @@ export const threadsLayer = Layer.effectContext(
 
     const runAdmitted = makeTurnRunner({
       accountsRoot,
-      active,
       approvals,
       commands: { run: (operation) => commands.run(operation) },
-      connectorGateway,
       endpoints,
       harness,
       imagesOf,
       isCurrent,
       local,
       publishDraft,
+      scopes,
       scratchRoot,
       sql,
     });
@@ -170,8 +164,8 @@ export const threadsLayer = Layer.effectContext(
 
     const wake = (threadId: string): Effect.Effect<void> =>
       Effect.suspend(() => {
-        const running = active.get(threadId);
-        if (running !== undefined) return steerInto(threadId, running);
+        const running = scopes.mainTurnOf(threadId);
+        if (running !== null) return steerInto(threadId, running);
         return local(admitTurn(threadId)).pipe(
           Effect.flatMap((turn) =>
             turn === null
@@ -189,7 +183,7 @@ export const threadsLayer = Layer.effectContext(
      */
     const takeBackgroundWake = (threadId: string): Effect.Effect<boolean> =>
       Effect.suspend(() => {
-        if (active.has(threadId)) return Effect.succeed(true);
+        if (scopes.isRunning(threadId)) return Effect.succeed(true);
         return Effect.gen(function* () {
           const turn = yield* local(admitBackgroundWake(threadId));
           if (turn === null) return false;
@@ -201,7 +195,7 @@ export const threadsLayer = Layer.effectContext(
     harness.onBackgroundWake?.(takeBackgroundWake);
 
     const interrupt = Effect.fnUntraced(function* (threadId: string) {
-      if (!active.has(threadId) || !(yield* harness.interrupt(threadId))) return false;
+      if (!(yield* scopes.interrupt(threadId))) return false;
       // The turn's end, in its own fiber, sets the thread's state and starts its next turn.
       yield* withdrawAll(threadId);
       return true;

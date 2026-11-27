@@ -5,6 +5,7 @@ import {
   HarnessFailure,
   interruptedOutcomeOf,
   interruptGraceMillis,
+  runKeyOf,
   type SteeredMessage,
   type TurnOutcome,
   type TurnRequest,
@@ -23,17 +24,18 @@ import {
 
 export type { HarnessConnection, HarnessProtocol, PooledTurn, PoolOptions, ProcessSignals, TurnEnd };
 
-// Each thread's harness process, kept between turns (CHG-0027): started or reused by the restart key its harness declares, closed when idle, when an interrupt goes unconfirmed, when a steered message was not taken in, and with the scope that made the pool.
+// Each run's harness process, kept between turns (CHG-0027); a thread's main run is keyed by the thread's id, and a run beside it has a process of its own: started or reused by the restart key its harness declares, closed when idle, when an interrupt goes unconfirmed, when a steered message was not taken in, and with the scope that made the pool.
 // The harness's protocol only speaks to the process.
 // A process may also wake itself between turns, as Claude Code does when a background command ends: the pool then asks its listener to run that work as a turn of the thread, and keeps a process with such work pending longer.
 
-/** An adapter that runs each thread's turns on one kept process of the harness; its processes close with its scope. */
+/** An adapter that runs each run's turns on one kept process of the harness (a thread's main run, or a side run beside it); its processes close with its scope. */
 export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection extends HarnessConnection>(
   protocol: HarnessProtocol<Connection>,
   options: PoolOptions,
 ) {
+  // Keyed by run key: a side run's process neither replaces nor closes the thread's main process.
   const entries = new Map<string, ProcessEntry<Connection>>();
-  /** Threads whose turn has begun but whose process is not yet running it, with whether an interrupt came meanwhile. */
+  /** Runs whose turn has begun but whose process is not yet running it, with whether an interrupt came meanwhile. */
   const starting = new Map<string, { isInterrupted: boolean }>();
   const idleMillis = Duration.toMillis(Duration.fromInputUnsafe(options.idleTimeout));
   const grace = options.interruptGrace ?? interruptGraceMillis;
@@ -44,24 +46,28 @@ export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection exte
   const holdMillisOf = (connection: HarnessConnection) =>
     connection.hasBackgroundWork?.() === true ? Math.max(idleMillis, backgroundMillis) : idleMillis;
 
-  const close = (threadId: string) => {
-    const entry = entries.get(threadId);
+  const close = (runKey: string) => {
+    const entry = entries.get(runKey);
     if (entry === undefined) return;
-    entries.delete(threadId);
+    entries.delete(runKey);
     if (entry.idleTimer !== null) clearTimeout(entry.idleTimer);
     entry.connection.close();
   };
   yield* Effect.addFinalizer(() => Effect.sync(() => [...entries.keys()].forEach(close)));
 
-  /** Asks for a turn when the thread's process woke itself and none runs; nobody taking it closes the process. */
-  const resume = (threadId: string) => {
-    const entry = entries.get(threadId);
+  /**
+   * Asks for a turn when the thread's process woke itself and none runs; nobody taking it closes the process. Only a
+   * main run's process wakes its thread: a turn of the thread would be its main turn, which a side run does not own.
+   */
+  const resume = (runKey: string, threadId: string) => {
+    const entry = entries.get(runKey);
     if (
+      runKey !== threadId ||
       entry === undefined ||
       entry.turn !== null ||
       entry.settling !== null ||
       entry.isTakingBackgroundWake ||
-      starting.has(threadId)
+      starting.has(runKey)
     )
       return;
     if (entry.connection.hasExited() || entry.connection.hasBackgroundWake?.() !== true || listeners.length === 0)
@@ -71,17 +77,17 @@ export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection exte
       Effect.gen(function* () {
         const answers = yield* Effect.forEach(listeners, (listener) => listener(threadId));
         const isTaken = answers.some((answer) => answer);
-        if (!isTaken && entries.get(threadId) === entry && entry.turn === null && !starting.has(threadId))
-          close(threadId);
+        if (!isTaken && entries.get(runKey) === entry && entry.turn === null && !starting.has(runKey)) close(runKey);
       }),
     );
   };
 
   const acquire = Effect.fnUntraced(function* (request: TurnRequest) {
+    const runKey = runKeyOf(request);
     const key = yield* Effect.sync(() => protocol.restartKeyOf(request));
-    const existing = entries.get(request.threadId);
-    if (existing !== undefined && (existing.key !== key || existing.connection.hasExited())) close(request.threadId);
-    const kept = entries.get(request.threadId);
+    const existing = entries.get(runKey);
+    if (existing !== undefined && (existing.key !== key || existing.connection.hasExited())) close(runKey);
+    const kept = entries.get(runKey);
     if (kept !== undefined) {
       if (kept.idleTimer !== null) clearTimeout(kept.idleTimer);
       kept.idleTimer = null;
@@ -91,26 +97,27 @@ export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection exte
     if (request.isBackgroundWake === true)
       return yield* new HarnessFailure({ reason: "The harness process that woke this thread is no longer available." });
     const entry: ProcessEntry<Connection> = {
-      connection: yield* protocol.start(request, { resume: () => resume(request.threadId) }),
+      connection: yield* protocol.start(request, { resume: () => resume(runKey, request.threadId) }),
       idleTimer: null,
       isTakingBackgroundWake: false,
       key,
       settling: null,
       turn: null,
     };
-    entries.set(request.threadId, entry);
+    entries.set(runKey, entry);
     return entry;
   });
 
   const runTurn = Effect.fnUntraced(
     function* (request: TurnRequest) {
+      const runKey = runKeyOf(request);
       const startingEntry = { isInterrupted: false };
-      starting.set(request.threadId, startingEntry);
-      const entry = yield* acquire(request).pipe(Effect.ensuring(Effect.sync(() => starting.delete(request.threadId))));
+      starting.set(runKey, startingEntry);
+      const entry = yield* acquire(request).pipe(Effect.ensuring(Effect.sync(() => starting.delete(runKey))));
       const { sessionId } = entry.connection;
       // An interrupt that came while the process started cancels the turn before its prompt is sent, which the harness could not cancel yet; the process stays for the next turn.
       if (startingEntry.isInterrupted) {
-        entry.idleTimer = setTimeout(() => close(request.threadId), idleMillis);
+        entry.idleTimer = setTimeout(() => close(runKey), idleMillis);
         return interruptedOutcomeOf(sessionId);
       }
       const turn: RunningTurn = {
@@ -144,24 +151,24 @@ export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection exte
         ),
       );
       if (ended._tag === "Failure") {
-        close(request.threadId);
+        close(runKey);
         // A process that dies while interrupted still spent what its earlier prompts reported.
         if (turn.isInterrupting) return interruptedOutcomeOf(sessionId, turn.usage);
         return yield* ended.failure;
       }
       if (ended.success._tag === "Unconfirmed") {
-        close(request.threadId);
+        close(runKey);
         return interruptedOutcomeOf(sessionId, turn.usage);
       }
       // A steered message not yet taken in would start a turn of its own in this process, which nothing reads: the process closes instead, and the message, still undelivered, starts the next turn (CHG-0039, provisional).
-      if (turn.untaken.size > 0) close(request.threadId);
+      if (turn.untaken.size > 0) close(runKey);
       else {
-        entry.idleTimer = setTimeout(() => close(request.threadId), holdMillisOf(entry.connection));
+        entry.idleTimer = setTimeout(() => close(runKey), holdMillisOf(entry.connection));
         // Admission can only claim the wake after the preceding turn is recorded as ended.
         const checkWake = Effect.sync(() => {
-          if (entries.get(request.threadId) !== entry || entry.settling !== turn) return;
+          if (entries.get(runKey) !== entry || entry.settling !== turn) return;
           entry.settling = null;
-          resume(request.threadId);
+          resume(runKey, request.threadId);
         });
         if (request.awaitSettlement === undefined) yield* checkWake;
         else fork(request.awaitSettlement.pipe(Effect.andThen(checkWake)));
@@ -177,19 +184,19 @@ export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection exte
         usage,
       } satisfies TurnOutcome;
     },
-    (effect, request) => effect.pipe(Effect.onInterrupt(() => Effect.sync(() => close(request.threadId)))),
+    (effect, request) => effect.pipe(Effect.onInterrupt(() => Effect.sync(() => close(runKeyOf(request))))),
   );
 
-  /** The thread's entry while a turn runs on a live process, or null. */
-  const runningOf = (threadId: string) => {
-    const entry = entries.get(threadId);
+  /** The run's entry while a turn runs on a live process, or null. */
+  const runningOf = (runKey: string) => {
+    const entry = entries.get(runKey);
     return entry === undefined || entry.connection.hasExited() || entry.turn === null
       ? null
       : { connection: entry.connection, turn: entry.turn };
   };
 
-  const steer = Effect.fnUntraced(function* (threadId: string, message: SteeredMessage) {
-    const running = runningOf(threadId);
+  const steer = Effect.fnUntraced(function* (runKey: string, message: SteeredMessage) {
+    const running = runningOf(runKey);
     if (running === null || running.turn.isInterrupting) return false;
     running.turn.untaken.add(message.id);
     const isTaken = yield* protocol.steer(running.connection, message);
@@ -197,10 +204,10 @@ export const makeHarnessProcesses = Effect.fnUntraced(function* <Connection exte
     return isTaken;
   });
 
-  const interrupt = Effect.fnUntraced(function* (threadId: string) {
-    const running = runningOf(threadId);
+  const interrupt = Effect.fnUntraced(function* (runKey: string) {
+    const running = runningOf(runKey);
     if (running === null) {
-      const startingEntry = starting.get(threadId);
+      const startingEntry = starting.get(runKey);
       if (startingEntry === undefined) return false;
       startingEntry.isInterrupted = true;
       return true;

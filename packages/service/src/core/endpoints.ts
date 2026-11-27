@@ -18,12 +18,15 @@ export class Endpoints extends Context.Service<
     /** Called once by the tool server when it listens. */
     readonly open: (port: number) => Effect.Effect<void>;
     /**
-     * Holds whether Code Mode is on for the thread from its turn's start, the setting its harness lists its tools under
-     * (connectors specification, Code Mode: a change applies from the next turn).
+     * Holds whether Code Mode is on for the run from its turn's start, the setting its harness lists its tools under
+     * (connectors specification, Code Mode: a change applies from the next turn). A thread's main run is keyed by the
+     * thread's id.
      */
-    readonly holdCodeMode: (threadId: string, isOn: boolean) => Effect.Effect<void>;
-    /** Whether Code Mode is on for the thread's current turn as held at its start, or null before any turn held it. */
-    readonly heldCodeMode: (threadId: string) => boolean | null;
+    readonly holdCodeMode: (runKey: string, isOn: boolean) => Effect.Effect<void>;
+    /** Whether Code Mode is on for the run's current turn as held at its start, or null before any turn held it. */
+    readonly heldCodeMode: (runKey: string) => boolean | null;
+    /** Forgets what the run held: a side run's setting ends with it, while a thread's own stays for its kept harness process. */
+    readonly releaseCodeMode: (runKey: string) => Effect.Effect<void>;
   }
 >()("outlore/Endpoints") {}
 
@@ -34,6 +37,7 @@ export const endpointsLayer = Layer.effect(
     const port = yield* Deferred.make<number>();
     const tokens = new Map<string, string>();
     const threads = new Map<string, string>();
+    // By run key; a thread's main run is keyed by the thread's id.
     const codeModes = new Map<string, boolean>();
     const tokenOf = (threadId: string) =>
       Effect.sync(() => {
@@ -45,9 +49,10 @@ export const endpointsLayer = Layer.effect(
         return token;
       });
     return {
-      heldCodeMode: (threadId) => codeModes.get(threadId) ?? null,
-      holdCodeMode: (threadId, isOn) => Effect.sync(() => void codeModes.set(threadId, isOn)),
+      heldCodeMode: (runKey) => codeModes.get(runKey) ?? null,
+      holdCodeMode: (runKey, isOn) => Effect.sync(() => void codeModes.set(runKey, isOn)),
       open: (listening) => Deferred.succeed(port, listening).pipe(Effect.asVoid),
+      releaseCodeMode: (runKey) => Effect.sync(() => void codeModes.delete(runKey)),
       threadOf: (token) => threads.get(token) ?? null,
       urlFor: (threadId) =>
         Effect.flatMap(Deferred.await(port), (listening) =>

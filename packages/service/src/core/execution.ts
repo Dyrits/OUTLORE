@@ -7,6 +7,7 @@ import {
   HarnessFailure,
   type ImageAttachment,
   type PlanLimitsReport,
+  runKeyOf,
   type SteeredMessage,
   type TurnOutcome,
   type TurnRequest,
@@ -25,12 +26,15 @@ export const interruptedOutcomeOf = (sessionId: string, usage: TokenUsage | null
   usage,
 });
 
-/** What one harness adapter offers: one turn of a thread at a time, which can be steered and interrupted. */
+/**
+ * What one harness adapter offers: one turn per run at a time, which can be steered and interrupted. A run is named by
+ * its key (`TurnRequest.runKey`); a thread's main run is keyed by the thread's id, so asking by thread id reaches it.
+ */
 export interface HarnessAdapter {
   /** Whether the harness runs its tools inside an enforced sandbox here at the approval level. */
   readonly containmentOf?: (harness: HarnessName, level: ApprovalLevel) => Containment;
-  /** Ends the thread's running turn, whose `runTurn` then returns as interrupted; false when none runs. */
-  readonly interrupt: (threadId: string) => Effect.Effect<boolean>;
+  /** Ends the run's running turn, whose `runTurn` then returns as interrupted; false when none runs. */
+  readonly interrupt: (runKey: string) => Effect.Effect<boolean>;
   /** Registers who is asked when a harness process wakes itself between turns (Claude Code, when a background command ends). */
   readonly onBackgroundWake?: (listener: BackgroundWakeListener) => void;
   /** Asks the harness's own tool for the limits of the plan behind an account (null: the computer's own sign-in). */
@@ -43,19 +47,20 @@ export interface HarnessAdapter {
   readonly runTurn: (request: TurnRequest) => Effect.Effect<TurnOutcome, HarnessFailure>;
   /** Runs the live probe of the Vault's folder denial, the one only a live model turn can verify (Claude Code), and keeps its result as the stamp readVaultDenial then reads (ADR 0022). */
   readonly runVaultDenialLive?: (harness: HarnessName, folder: string) => Effect.Effect<VaultDenial>;
-  /** Writes a message into the thread's running turn; false when no turn runs or the harness cannot take one mid-turn. */
-  readonly steer: (threadId: string, message: SteeredMessage) => Effect.Effect<boolean>;
+  /** Writes a message into the run's running turn; false when no turn runs or the harness cannot take one mid-turn. */
+  readonly steer: (runKey: string, message: SteeredMessage) => Effect.Effect<boolean>;
 }
 
 /** The harness seam: runs one turn of a thread, reports its events, and lets it be steered and interrupted. */
 export class Harness extends Context.Service<Harness, HarnessAdapter>()("outlore/Harness") {}
 
-/** Sends each turn to the adapter of its thread's harness, and steering and interrupts to the adapter running that thread's turn (provider-accounts). */
+/** Sends each turn to the adapter of its thread's harness, and steering and interrupts to the adapter running that run's turn (provider-accounts). */
 export const routeHarnesses = (adapters: Record<HarnessName, HarnessAdapter>): HarnessAdapter => {
+  // By run key, so a run beside a thread's main turn neither replaces nor clears the main turn's route.
   const running = new Map<string, HarnessAdapter>();
   return {
     containmentOf: (harness, level) => adapters[harness].containmentOf?.(harness, level) ?? "Unprotected",
-    interrupt: (threadId) => running.get(threadId)?.interrupt(threadId) ?? Effect.succeed(false),
+    interrupt: (runKey) => running.get(runKey)?.interrupt(runKey) ?? Effect.succeed(false),
     onBackgroundWake: (listener) => {
       for (const adapter of Object.values(adapters)) adapter.onBackgroundWake?.(listener);
     },
@@ -66,9 +71,9 @@ export const routeHarnesses = (adapters: Record<HarnessName, HarnessAdapter>): H
     runTurn: (request) =>
       Effect.suspend(() => {
         const adapter = adapters[request.harness];
-        running.set(request.threadId, adapter);
+        running.set(runKeyOf(request), adapter);
         return adapter.runTurn(request);
-      }).pipe(Effect.ensuring(Effect.sync(() => running.delete(request.threadId)))),
+      }).pipe(Effect.ensuring(Effect.sync(() => running.delete(runKeyOf(request))))),
     runVaultDenialLive: (harness, folder) =>
       adapters[harness].runVaultDenialLive?.(harness, folder) ??
       Effect.succeed({
@@ -76,7 +81,7 @@ export const routeHarnesses = (adapters: Record<HarnessName, HarnessAdapter>): H
         reason: "This harness has no live probe of the Vault's folder.",
         status: "Unverified",
       }),
-    steer: (threadId, message) => running.get(threadId)?.steer(threadId, message) ?? Effect.succeed(false),
+    steer: (runKey, message) => running.get(runKey)?.steer(runKey, message) ?? Effect.succeed(false),
   };
 };
 

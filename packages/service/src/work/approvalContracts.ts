@@ -68,8 +68,11 @@ export class Approvals extends Context.Service<
       prompt: HarnessPrompt,
       /** The harness's id of the call, when it gives one. */
       toolUseId?: string | null,
+      /** The run the prompt comes from, whose one-time allowances it may take; the thread's id, its main run, when left out. */
+      runKey?: string,
     ) => Effect.Effect<Decision>;
-    readonly requestApproval: (threadId: string, request: ApprovalRequest) => Effect.Effect<Decision>;
+    /** Asks the owner to allow one exact command once, in the run's turn (the thread's main run when `runKey` is left out). */
+    readonly requestApproval: (threadId: string, request: ApprovalRequest, runKey?: string) => Effect.Effect<Decision>;
     /**
      * Asks about one call to a connector's tool that is not read-only, or is not classified: a standing permission of the
      * capability `useConnectorTool` for that tool of that connector answers it, else Allow, Always allow or Deny.
@@ -94,8 +97,8 @@ export class Approvals extends Context.Service<
       outcome: "AllowedByMessage" | "AllowedByPermission",
       evidence: string,
     ) => Effect.Effect<void>;
-    /** Forgets the thread's one-time allowances: an approval lasts only the turn it was given in. */
-    readonly endTurn: (threadId: string) => Effect.Effect<void>;
+    /** Forgets the run's one-time allowances, and no other run's: an approval lasts only the turn it was given in. */
+    readonly endTurn: (runKey: string) => Effect.Effect<void>;
     readonly withdraw: (threadId: string) => Effect.Effect<void>;
   }
 >()("outlore/Approvals") {}
