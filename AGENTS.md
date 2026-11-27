@@ -61,9 +61,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume Companion answer frames, in-frame follow-ups, opt-in context, the side-chat jump menu, and usage-limit refusal by model group (CHG-0786, CHG-0787, CHG-0788 with the Standards and Specifications review fixes; live desktop and phone check and a live Antigravity turn remaining), read the [current handoff](.agents/handoffs/2026-11-27-1220-companion-frames.md). Handoffs are shared and committed.
+
 - To resume quest tab switching dropping stale Errands list requests (fixed in `paneSession.ts` at `fab6138b` with regression tests and reproduced proof; live desktop check C4 and deferred `SPEC-1` realm-switch channel `listRequest` follow-up remaining), read the [current handoff](.agents/handoffs/2026-11-27-1138-quest-tab-list-request.md). Handoffs are shared and committed.
 
 - To resume connectors OAuth sign-in fixes, Standards refactors, and specification updates (CHG-0785: all 25 Standards findings, OAuth failure-path fixes, UI refresh/Cancel, and spec updates committed on `main` at `69723d9b`; live Atlassian sign-in and desktop Cancel check pending), read the [current handoff](.agents/handoffs/2026-11-27-1133-connectors-oauth-review-and-fixes.md). Handoffs are shared and committed.
-
-- To resume tracking inspirations' latest changes (2026-11-27 primary-source sweep merged into `documentation/inspirations.md` with four research notes; Antigravity `/usage` compliance flag, CLI 1.5.16 multi-account env fix, and candidate ideas ready for backlog triage), read the [current handoff](.agents/handoffs/2026-11-27-1120-inspirations-tracking.md). Handoffs are shared and committed.
 
