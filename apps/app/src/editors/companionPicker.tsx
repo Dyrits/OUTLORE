@@ -5,20 +5,25 @@ import { effortName, modelLabelOf, runnerSummaryOf } from "../foundation/formatt
 import { CompanionDockActions, CompanionTabOf } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts } from "../foundation/theme";
+import { Button } from "../ui/button";
 import { Fold, FoldGroup } from "../ui/fold";
 import { ProviderMark } from "../ui/providerMarks";
 import { CompanionBody } from "./companionBody";
 import { PresetChooser } from "./presetChooser";
+import { DetailsHeader, PresetEditor } from "./presetEditor";
+import { customHint, customName, detailsModeOf, entriesOf, navWidth, panelLayoutOf, splitGap } from "./presetEntries";
 import { PresetNameForm } from "./presetNameForm";
 import { PresetOverwrite } from "./presetOverwrite";
-import { presetOf } from "./presets";
+import { presetChangeOf } from "./presets";
 
 /** The width of the picker's panel in a window with no right-hand column to hold it: a mini sidebar. */
 const miniWidth = 288;
 
 /**
- * The Companions tab: the presets in a card of their own when there are any, then a fold for the thread's own Companion, unfolded first, and under it what belongs to the thread alone (`extra`: its backup Companions, one fold each).
+ * The Companions tab: the presets when there are any (a list of rows, then a Custom entry for a stack none of them holds), then a fold for the thread's own Companion, unfolded first, and under it what belongs to the thread alone (`extra`: its backup Companions, one fold each).
  * One fold is unfolded at a time.
+ * Wide enough (`splitLeastWidth`, measured on the panel itself), the list stands at the left and the details at the right; narrower, they are stacked.
+ * Edit on a selected preset swaps the details for the preset's own editors (edit mode), which change the preset and never the thread.
  */
 export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { onClose?: () => void }) {
   const { extra, panel, ...picker } = props;
@@ -28,15 +33,27 @@ export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { o
   const backups = presetChoice?.backups;
   // The preset last chosen in this tab: what a changed Companion can be written back to.
   const [basedOn, setBasedOn] = useState<string | null>(null);
+  // The preset in edit mode, by name.
+  const [editing, setEditing] = useState<string | null>(null);
+  const [width, setWidth] = useState<number | null>(null);
+  const layout = panelLayoutOf(width);
   const stack =
     backups == null
       ? null
       : { accountId: props.accountId, backups, effort: props.effort, harness: props.harness, model: props.model };
-  const isCustomStack = stack !== null && presetChoice !== null && presetOf(presetChoice.presets, stack) === null;
-  const overwritten = presetChoice?.presets.find((preset) => preset.name === basedOn);
+  const presets = presetChoice?.presets ?? [];
+  const entries = entriesOf(presets, stack);
+  const chosen = entries.find((entry) => entry.kind === "preset" && entry.isChosen);
+  const isCustomStack = entries.some((entry) => entry.kind === "custom");
+  const overwritten = presets.find((preset) => preset.name === basedOn);
+  const details = detailsModeOf(presets, editing);
+  const isSplit = layout === "split";
   return (
     <FoldGroup initial="main">
-      <View style={[local.body, panel !== undefined && local.bodyOfPanel]}>
+      <View
+        onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+        style={[local.body, panel !== undefined && local.bodyOfPanel]}
+      >
         {onClose !== undefined && (
           <View style={local.title}>
             <Text style={local.titleText}>Companions</Text>
@@ -45,56 +62,83 @@ export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { o
             </Pressable>
           </View>
         )}
-        <ScrollView contentContainerStyle={local.stack} style={local.scroll}>
+        <ScrollView contentContainerStyle={[local.stack, isSplit && local.split]} style={local.scroll}>
           {panel ?? (
             <>
-              {presetChoice !== null && presetChoice.presets.length > 0 && (
-                <PresetChooser
-                  accountId={props.accountId}
-                  choice={{
-                    ...presetChoice,
-                    onPreset: (preset) => {
+              {presetChoice !== null && entries.length > 0 && (
+                <View style={isSplit && local.nav}>
+                  <PresetChooser
+                    entries={entries}
+                    harnesses={props.harnesses}
+                    isNav={isSplit}
+                    onPreset={(preset) => {
                       setBasedOn(preset.name);
+                      // Choosing a preset is a handover of the thread, which ends the edit of a preset.
+                      setEditing(null);
                       presetChoice.onPreset(preset);
-                    },
-                  }}
-                  effort={props.effort}
-                  harness={props.harness}
-                  harnesses={props.harnesses}
-                  model={props.model}
-                />
+                    }}
+                  />
+                </View>
               )}
-              <Fold
-                harness={props.harness}
-                id="main"
-                summary={runnerSummaryOf(props.harnesses, props)}
-                title="Companion"
-              >
-                <CompanionBody {...picker} />
-              </Fold>
-              {extra}
-              {onOverwritePreset !== undefined && isCustomStack && overwritten !== undefined && (
-                <PresetOverwrite
-                  key={overwritten.name}
-                  name={overwritten.name}
-                  onOverwrite={() => onOverwritePreset(overwritten.name, stack)}
-                />
-              )}
-              {onSavePreset !== undefined && backups != null && (
-                <PresetNameForm
-                  key={extra?.key}
-                  label="Save as a preset"
-                  onSave={(name) =>
-                    onSavePreset(name, {
-                      accountId: props.accountId,
-                      backups,
-                      effort: props.effort,
-                      harness: props.harness,
-                      model: props.model,
-                    })
-                  }
-                />
-              )}
+              <View style={[local.details, isSplit && entries.length > 0 && local.detailsSplit]}>
+                {details.mode === "edit" && onOverwritePreset !== undefined ? (
+                  <PresetEditor
+                    harnesses={props.harnesses}
+                    key={details.preset.name}
+                    name={details.preset.name}
+                    onDone={() => setEditing(null)}
+                    onSave={(next) => onOverwritePreset(details.preset.name, next)}
+                    stack={presetChangeOf(details.preset)}
+                  />
+                ) : (
+                  <>
+                    {entries.length > 0 && stack !== null && (
+                      <DetailsHeader
+                        action={
+                          chosen?.kind === "preset" && onOverwritePreset !== undefined ? (
+                            <Button isPrimary={false} label="Edit" onPress={() => setEditing(chosen.preset.name)} />
+                          ) : null
+                        }
+                        title={chosen?.kind === "preset" ? chosen.preset.name : `${customName}, ${customHint}`}
+                      />
+                    )}
+                    <Fold
+                      harness={props.harness}
+                      id="main"
+                      summary={runnerSummaryOf(props.harnesses, props)}
+                      title="Companion"
+                    >
+                      <CompanionBody {...picker} />
+                    </Fold>
+                    {extra}
+                    {onOverwritePreset !== undefined &&
+                      stack !== null &&
+                      isCustomStack &&
+                      overwritten !== undefined && (
+                        <PresetOverwrite
+                          key={overwritten.name}
+                          name={overwritten.name}
+                          onOverwrite={() => onOverwritePreset(overwritten.name, stack)}
+                        />
+                      )}
+                    {onSavePreset !== undefined && backups != null && (
+                      <PresetNameForm
+                        key={extra?.key}
+                        label="Save as a preset"
+                        onSave={(name) =>
+                          onSavePreset(name, {
+                            accountId: props.accountId,
+                            backups,
+                            effort: props.effort,
+                            harness: props.harness,
+                            model: props.model,
+                          })
+                        }
+                      />
+                    )}
+                  </>
+                )}
+              </View>
             </>
           )}
         </ScrollView>
@@ -181,6 +225,10 @@ const local = StyleSheet.create({
   body: { backgroundColor: colors.page, flex: 1, gap: 8, padding: 12 },
   // A panel of its own starts with tabs, which sit closer to the column's.
   bodyOfPanel: { paddingTop: 6 },
+  // The details stand under the list when stacked, and beside it when split; the Overwrite and save forms keep their 8 px.
+  details: { gap: 8 },
+  detailsSplit: { flex: 1, minWidth: 0 },
+  nav: { width: navWidth },
   // A narrow window's stand-in for the column: a panel over the right edge, below the top bar.
   overlay: {
     borderColor: colors.border,
@@ -192,6 +240,7 @@ const local = StyleSheet.create({
     width: miniWidth,
   },
   scroll: { flex: 1 },
+  split: { alignItems: "flex-start", flexDirection: "row", gap: splitGap },
   stack: { gap: 8 },
   title: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   titleClose: { color: colors.textMuted, fontSize: fontSizes.md, paddingHorizontal: 4 },

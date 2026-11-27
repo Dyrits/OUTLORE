@@ -1,5 +1,11 @@
 # Work in progress
 
+## Companions tab: split layout, Custom entry, preset edit mode · 2026-11-27 · built and tested; window and phone not looked at
+
+CHG-0789 in `0.2.12-Pre-Alpha` (branch `mission/companion-presets-layout-b209a070`): the Companions tab of a quest or errand measures its own width and splits at `splitLeastWidth` (480): the preset list (plus the Custom entry) stands at the left (`navWidth` 176) and the thread's Companion details at the right; narrower, the sections stack as before. A stack that no preset holds selects the **Custom** entry ("not saved yet"); Save as a preset and Overwrite persist it. **Edit** on a selected preset swaps the details for the preset's own editors (`presetEditor.tsx`), saving each change to the preset at once through the same `SetStack` request as the Workshop, never touching the thread's Companion; a thread that was on the preset then shows Custom with its old stack and rejoins by pressing its row.
+Verified with Biome on the changed files, the 7-workspace typecheck (exit 0) and `CI=1 bun run test apps/app` (131 files, 1,074 passed, 6 skipped by the sandbox, 0 failed); the new test files fail on the starting commit.
+Next: in the desktop window, resize the Companions column across 480 and watch the split switch; look at the Custom entry after changing a model, at **Edit** and **Done**, at an edit moving a thread to Custom, and at pressing the row to rejoin; check the stacked card on the phone and decide whether 480 is the right width.
+
 ## Connectors OAuth sign-in fixes and Standards refactors · 2026-11-27 · built and tested against mock OAuth server; live Atlassian sign-in and window check pending
 
 CHG-0785 in `0.2.12-Pre-Alpha`: fixed the OAuth sign-in failure paths (`SPEC-1`–`SPEC-4`, `SPEC-8`, `SPEC-10`–`SPEC-12`, `BUG-1`, `BUG-3`–`BUG-7`), completed all 25 Standards refactors (`STD-1`–`STD-25`), and updated `documentation/capabilities/connectors/specifications.md` (`SPEC-5`–`SPEC-7`, `SPEC-9`). [Proof](verification/2026-11-27-connectors-oauth-review-and-fixes.md): Biome clean, service + app typecheck exit 0, 374 connector tests + 11 app tests passed.

@@ -64,3 +64,7 @@ export const presetChangeOf = (preset: Preset) => ({
   ...preset.runner,
   backups: preset.backups,
 });
+
+/** The request that replaces a saved preset's whole stack, as the Workshop's editing, Overwrite and the tab's edit mode all send it. */
+export const presetStackRequest = (name: string, stack: Tier) =>
+  ({ _tag: "ChangeCompanionPreset", edit: { _tag: "SetStack", name, stack } }) as const;

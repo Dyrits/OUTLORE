@@ -252,6 +252,14 @@ _Avoid_: Key profile, custom provider
 A name for a complete stack of one primary Companion (harness, provider account, model, effort) and its ordered backup Companions, which the owner picks instead of choosing each part by hand. An empty backup list is part of the stack too. The interface says preset. Light, Balanced, and Heavy are presets; see [companion presets](capabilities/companion-presets/specifications.md).
 _Avoid_: Profile, template, tier (a tier is one of the three presets Chronicler picks among)
 
+**Custom entry**:
+The row the Companions tab shows among the presets when a thread's whole stack (Companion and ordered backups) matches no preset: unsaved, selected, subtitled "not saved yet". Save as a preset or Overwrite makes it a preset.
+_Avoid_: Draft, unsaved preset
+
+**Preset edit mode**:
+The Companions tab's state, entered with **Edit** on a selected preset, in which the tab's pickers change the preset's own Companion and backups, saved at once, and never the thread's.
+_Avoid_: Preset settings
+
 **Handover**:
 A change of harness, agent, model, or effort in the middle of a thread, giving the new one the thread's full history.
 _Avoid_: Switch, transfer

@@ -1,57 +1,81 @@
-import type { AccountId, EffortChoice, HarnessList, HarnessName, ModelChoice } from "@outlore/contracts";
+import type { HarnessList } from "@outlore/contracts";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { runnerSummaryOf } from "../foundation/formatting";
 import { countedOf } from "../foundation/labels";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, outline, round } from "../foundation/theme";
 import { ProviderMark } from "../ui/providerMarks";
-import { type PresetChoice, presetOf } from "./presets";
+import { customHint, customName, type PresetEntry } from "./presetEntries";
+import type { Preset } from "./presets";
 
-/** The preset chooser of the Companions tab: the presets, above the thread's own Companion, each putting its whole stack in place with one press. */
+/**
+ * The preset list of the Companions tab: a row for each preset, putting its whole stack in place with one press, and the Custom entry when the thread's stack is none of them.
+ * Stacked, it is a card above the thread's Companion with the summary at each row's right; as a navigation (`isNav`), the left column of the split layout, with the summary under the name.
+ */
 export function PresetChooser({
-  accountId,
-  choice: { backups, onPreset, presets },
-  effort,
-  harness,
+  entries,
   harnesses,
-  model,
+  isNav,
+  onPreset,
 }: {
-  accountId: AccountId | null;
-  choice: PresetChoice;
-  effort: EffortChoice;
-  harness: HarnessName;
+  entries: ReadonlyArray<PresetEntry>;
   harnesses: HarnessList | null;
-  model: ModelChoice;
+  isNav: boolean;
+  onPreset: (preset: Preset) => void;
 }) {
-  const chosen = presetOf(presets, backups === null ? null : { accountId, backups, effort, harness, model });
   return (
-    <View style={local.card}>
-      <Text style={local.title}>Preset</Text>
+    <View style={isNav ? local.nav : local.card}>
+      <Text style={local.title}>{isNav ? "Presets" : "Preset"}</Text>
       <View accessibilityLabel="Companion presets" accessibilityRole="radiogroup">
-        {presets.map((preset) => {
-          const isChosen = preset.name === chosen?.name;
-          return (
-            <Pressable
-              accessibilityLabel={`Preset ${preset.name}`}
+        {entries.map((entry) => {
+          const label = entry.kind === "custom" ? customName : entry.preset.name;
+          const summary =
+            entry.kind === "custom"
+              ? customHint
+              : `${runnerSummaryOf(harnesses, entry.preset.runner)} · ${countedOf(entry.preset.backups.length, "backup")}`;
+          const rowStyle = [
+            styles.menuItem,
+            local.row,
+            isNav && local.rowNav,
+            entry.isChosen && styles.menuItemSelected,
+          ];
+          const content = (
+            <>
+              {entry.kind === "preset" ? <ProviderMark harness={entry.preset.runner.harness} size={14} /> : null}
+              <View style={[local.text, isNav && local.textNav]}>
+                <Text numberOfLines={1} style={[local.name, entry.isChosen && styles.chipTextSelected]}>
+                  {label}
+                </Text>
+                <Text numberOfLines={isNav ? 2 : 1} style={[local.summary, isNav && local.summaryNav]}>
+                  {summary}
+                </Text>
+              </View>
+              {entry.isChosen && <Text style={styles.chipTextSelected}>✓</Text>}
+            </>
+          );
+          // Custom is the thread's own state, so there is nothing to press.
+          return entry.kind === "custom" ? (
+            <View
+              accessibilityLabel={`${customName} companion, ${customHint}`}
               accessibilityRole="radio"
-              accessibilityState={{ checked: isChosen }}
-              aria-checked={isChosen}
-              key={preset.name}
-              onPress={() => onPreset(preset)}
-              style={({ pressed }) => [
-                styles.menuItem,
-                local.preset,
-                pressed && local.pressed,
-                isChosen && styles.menuItemSelected,
-              ]}
+              accessibilityState={{ checked: true }}
+              aria-checked={true}
+              key="custom"
+              style={rowStyle}
             >
-              <ProviderMark harness={preset.runner.harness} size={14} />
-              <Text style={[local.name, isChosen && styles.chipTextSelected]}>{preset.name}</Text>
-              <Text numberOfLines={1} style={local.summary}>
-                {runnerSummaryOf(harnesses, preset.runner)}
-                {` · ${countedOf(preset.backups.length, "backup")}`}
-              </Text>
-              {isChosen && <Text style={styles.chipTextSelected}>✓</Text>}
+              {content}
+            </View>
+          ) : (
+            <Pressable
+              accessibilityLabel={`Preset ${entry.preset.name}`}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: entry.isChosen }}
+              aria-checked={entry.isChosen}
+              key={entry.preset.name}
+              onPress={() => onPreset(entry.preset)}
+              style={({ pressed }) => [rowStyle, pressed && local.pressed]}
+            >
+              {content}
             </Pressable>
           );
         })}
@@ -71,8 +95,10 @@ const local = StyleSheet.create({
     paddingTop: 8,
   },
   name: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.md, fontWeight: "600" },
-  preset: { alignItems: "center", flexDirection: "row", gap: 8 },
+  nav: { gap: 4 },
   pressed: { backgroundColor: colors.controlHover },
+  row: { alignItems: "center", flexDirection: "row", gap: 8 },
+  rowNav: { alignItems: "flex-start" },
   summary: {
     color: colors.textMuted,
     flex: 1,
@@ -80,5 +106,8 @@ const local = StyleSheet.create({
     fontSize: fontSizes.sm,
     textAlign: "right",
   },
+  summaryNav: { flex: 0, textAlign: "left" },
+  text: { alignItems: "center", flex: 1, flexDirection: "row", gap: 8, minWidth: 0 },
+  textNav: { alignItems: "stretch", flexDirection: "column", gap: 0 },
   title: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.md, fontWeight: "600" },
 });
