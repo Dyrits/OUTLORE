@@ -3,6 +3,7 @@ import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { dayMillis, readSettings, wordsOf } from "../core/index.ts";
 import { listMissionSummaries } from "./missionSummaries.ts";
+import { isQuestStandingOf, isVisibleQuestOf } from "./questVisibility.ts";
 
 /** The dashboard summaries of the missions, by mission id; a mission that no longer stands has none. */
 export const readMissionSummaryMap = Effect.fnUntraced(function* (ids: ReadonlyArray<string>) {
@@ -53,9 +54,9 @@ export const findMissions = Effect.fnUntraced(function* (callerId: string, reque
   }>`
       SELECT m.id, m.title, j.briefing, m.last_activity_at AS lastActivityAt, ${openingRequestOf(sql)} AS opening
       FROM missions m JOIN threads top ON top.id = m.top_thread_id LEFT JOIN journals j ON j.mission_id = m.id
-      WHERE top.is_deleting = 0 AND m.is_guildmaster = 0
+      WHERE ${isVisibleQuestOf(sql)}
         AND NOT EXISTS (SELECT 1 FROM rituals r WHERE r.mission_id = m.id)
-        AND (m.ending IS NULL OR COALESCE(m.done_at, m.last_activity_at) >= ${staleBefore})
+        AND (${isQuestStandingOf(sql, ["open"])} OR COALESCE(m.done_at, m.last_activity_at) >= ${staleBefore})
         AND m.id <> (SELECT mission_id FROM threads WHERE id = ${callerId})`;
   const scored = rows
     .map((row) => {

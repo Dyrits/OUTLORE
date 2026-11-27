@@ -13,6 +13,7 @@ import {
   threadsWhere,
 } from "./budgetScopes.ts";
 import { haltThreads, holdQuestionHolder, holdThread, releaseThread, waitsInTurn } from "./lifecycle.ts";
+import { readChroniclerPlace } from "./questVisibility.ts";
 
 // Stopping and releasing work at budget limits, and the owner's budget changes (budget-control, Reaching a limit).
 // A scope is a mission's budget, a provider account's, or the global one (budgetScopes.ts); what the owner reads
@@ -28,11 +29,8 @@ export const insertEvent = Effect.fnUntraced(function* (missionId: string, text:
 
 /** Records a line about the global budget in the Guildmaster's quest, where the owner reads it; nothing is recorded before the Guildmaster exists. */
 export const insertGlobalEvent = Effect.fnUntraced(function* (text: string) {
-  const sql = yield* SqlClient.SqlClient;
-  const [guildmaster] = yield* sql<{
-    id: string;
-  }>`SELECT id FROM missions WHERE is_guildmaster = 1 AND chronicler_channel IS NULL`;
-  if (guildmaster !== undefined) yield* insertEvent(guildmaster.id, text);
+  const guildmaster = yield* readChroniclerPlace(null);
+  if (guildmaster !== null) yield* insertEvent(guildmaster.missionId, text);
 });
 
 /** The scope's open stop's holder, opening the stop with `holderId` when none is open; whether it was opened now. */

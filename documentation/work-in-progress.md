@@ -1,5 +1,10 @@
 # Work in progress
 
+## Quest visibility module · 2026-11-27 · built and tested on `worktree/quest-visibility`; merge pending
+
+CHG-0779 in `0.2.10-Pre-Alpha` (audit candidate 1, base `1a5ed415`): extracted `packages/service/src/work/questVisibility.ts` to own quest kinds (`"owner" | "chronicler" | "companion"` reserved), standings (`"open" | "done" | "archived"`), deletion/errand-archiving fragments, and Chronicler-place lookups, and converted 40 callers in `packages/service/src/work/`. Verified with `questVisibility.test.ts` (20 tests), `bunx biome check packages/service`, 7-workspace `bun run typecheck`, and `GIT_CONFIG_VALUE_0= CI=1 bun run test packages/service` (248 passed, 4 skipped; 2,174 passed, 24 skipped).
+Next: merge `worktree/quest-visibility` with the concurrent message-marks (`mentions.ts`, `pendingMessages.ts`) and API-key-accounts (`accounts.ts`) work, then swap the two deferred raw-flag checks (`accounts.ts:197`, `pendingMessages.ts:89`) onto `questVisibility.ts`.
+
 ## Phone growing bar and side menu · 2026-11-26 · built, refactored, spec fixes green; real phone pending
 
 CHG-0773 in `0.2.10-Pre-Alpha`: the phone's three-tab pill is replaced by a floating bar of Chronicle, Realms, Quests and Errands that grows as a realm and a quest are chosen; a tap shows a choice, a hold of half a second opens a sheet to change it, and each lands in its chat with the composer above the bar. The top bar carries the desktop pane header's actions, and a side menu holds the hosts, the Keep, Reserves and Settings (`phoneBar.tsx`, `phoneChooser.tsx`, `phoneSelection.ts`, `sideMenu.tsx`, `narrowShell.tsx`, `narrowAppScreen.tsx`). Nine HTML drafts are kept in `documentation/art-direction/2026-11-26-mobile-menu-*.html`.

@@ -9,6 +9,7 @@ import { resumeInTurn } from "./lifecycle.ts";
 import { findMissions, findMissionsTextOf, maxMatches } from "./matching.ts";
 import { insertErrandReply } from "./messaging.ts";
 import { placeQuestOrigin } from "./questOrigins.ts";
+import { isQuestKindOf, isVisibleQuestOf } from "./questVisibility.ts";
 import { carryOut } from "./suggestionAnswers.ts";
 import { openFromChannel, openWithoutAsking, type Resolution, withdrawn } from "./suggestionOutcomes.ts";
 import { readSuggestion } from "./suggestionStore.ts";
@@ -159,7 +160,7 @@ export const suggestionsLayer = Layer.effect(
           isGuildmaster: number;
           missionId: string;
           realmId: string | null;
-        }>`SELECT t.mission_id AS missionId, m.is_guildmaster AS isGuildmaster, m.chronicler_channel AS channel,
+        }>`SELECT t.mission_id AS missionId, ${isQuestKindOf(sql, "chronicler")} AS isGuildmaster, m.chronicler_channel AS channel,
               t.workspace_id AS realmId
             FROM threads t JOIN missions m ON m.id = t.mission_id WHERE t.id = ${threadId}`;
         if (caller === undefined) return unchanged<Suggested>({ _tag: "UnknownThread" });
@@ -168,7 +169,7 @@ export const suggestionsLayer = Layer.effect(
           (missions.length === 0
             ? []
             : yield* sql<{ id: string }>`SELECT m.id FROM missions m JOIN threads top ON top.id = m.top_thread_id
-                WHERE m.id IN ${sql.in([...missions])} AND top.is_deleting = 0 AND m.is_guildmaster = 0`
+                WHERE m.id IN ${sql.in([...missions])} AND ${isVisibleQuestOf(sql)}`
           ).map((row) => row.id),
         );
         const named = [...new Set(missions)]

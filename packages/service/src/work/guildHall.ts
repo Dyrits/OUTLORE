@@ -4,6 +4,7 @@ import { SqlClient } from "effect/sql";
 import { consumptionColumns, dayMillis } from "../core/index.ts";
 import { type ConsumptionRow, consumptionOf } from "./consumption.ts";
 import { unchanged } from "./followUps.ts";
+import { isVisibleQuestOf, questsFrom } from "./questVisibility.ts";
 
 // The Guild Hall hub's recap (quest coordination, Guild Hall as a hub): what happened since the owner's last visit.
 // Recent activity and what waits for the owner come from the quest list the app already reads.
@@ -46,8 +47,8 @@ export const readGuildHallRecap = Effect.fnUntraced(function* (given: number | n
   const since = given ?? lastVisit ?? now - dayMillis;
   // The Guild Hall's own quest and the Rituals' quests are no finished quests: a Ritual's quest never ends.
   const finished = yield* sql<{ missionId: MissionId; title: string }>`
-      SELECT id AS missionId, title FROM missions
-      WHERE is_guildmaster = 0 AND ending = 'Fulfilled' AND done_at >= ${since} ORDER BY done_at DESC`;
+      SELECT m.id AS missionId, m.title FROM ${questsFrom(sql)}
+      WHERE ${isVisibleQuestOf(sql, ["done"])} AND m.done_at >= ${since} ORDER BY m.done_at DESC`;
   const [counted] = yield* sql<ConsumptionRow>`
       SELECT ${sql.literal(consumptionColumns)} FROM usage u WHERE u.ended_at >= ${since}`;
   // Each run leaves its trigger line in its Ritual's conversation ("Ritual · …", see `beginRun`); the errand the run

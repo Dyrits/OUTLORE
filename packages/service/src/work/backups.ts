@@ -6,6 +6,7 @@ import { checkBackups } from "../harness/index.ts";
 import { refuseWaitingImages } from "./admission.ts";
 import { changed, unchanged, type WithFollowUps } from "./followUps.ts";
 import { changeThreadRunner } from "./handover.ts";
+import { isNotBeingDeletedOf } from "./questVisibility.ts";
 
 // Backup Companions (thread-panel, Backups): the Companions a thread falls back to, in order, when a turn fails.
 
@@ -17,7 +18,9 @@ export const setThreadBackups = Effect.fnUntraced(function* (
   backups: ReadonlyArray<BackupCompanion>,
 ) {
   const sql = yield* SqlClient.SqlClient;
-  const [thread] = yield* sql<{ id: string }>`SELECT id FROM threads WHERE id = ${threadId} AND is_deleting = 0`;
+  const [thread] = yield* sql<{
+    id: string;
+  }>`SELECT id FROM threads WHERE id = ${threadId} AND ${isNotBeingDeletedOf(sql, "threads")}`;
   if (thread === undefined) return yield* notFound("No such thread.");
   yield* checkBackups(backups);
   yield* sql`UPDATE threads SET backups = ${JSON.stringify(backups)}, backup_step = 0 WHERE id = ${threadId}`;
@@ -55,7 +58,7 @@ export const fallBackToBackup = Effect.fnUntraced(function* (
   const sql = yield* SqlClient.SqlClient;
   const [row] = yield* sql<{ accountId: string | null; backups: string; harness: string; step: number }>`
       SELECT backups, backup_step AS step, harness, account_id AS accountId
-      FROM threads WHERE id = ${threadId} AND is_deleting = 0`;
+      FROM threads WHERE id = ${threadId} AND ${isNotBeingDeletedOf(sql, "threads")}`;
   if (row === undefined) return unchanged(null);
   const backups = decodeBackups(JSON.parse(row.backups));
   for (let index = row.step; index < backups.length; index++) {

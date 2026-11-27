@@ -6,6 +6,7 @@ import { changed, unchanged } from "./followUps.ts";
 import { clip } from "./guildmasterText.ts";
 import { readMissionSummaryMap } from "./matching.ts";
 import { insertMessage } from "./messaging.ts";
+import { isNotBeingDeletedOf, readChroniclerPlace } from "./questVisibility.ts";
 
 // ----- Hearing back: the quests Chronicler opened tell it when they report, need the owner, or fail -----
 
@@ -38,11 +39,10 @@ export const reportToGuildmaster = Effect.gen(function* () {
   const opened = yield* sql<{ id: string; told: string | null; topThreadId: string; title: string }>`
     SELECT m.id, m.guildmaster_told AS told, m.top_thread_id AS topThreadId, m.title
     FROM missions m JOIN threads top ON top.id = m.top_thread_id
-    WHERE m.opened_by_guildmaster = 1 AND top.is_deleting = 0`;
+    WHERE m.opened_by_guildmaster = 1 AND ${isNotBeingDeletedOf(sql, "top")}`;
   if (opened.length === 0) return unchanged(null);
-  const [guildmaster] = yield* sql<{ threadId: string }>`
-    SELECT top_thread_id AS threadId FROM missions WHERE is_guildmaster = 1 AND chronicler_channel IS NULL`;
-  if (guildmaster === undefined) return unchanged(null);
+  const guildmaster = yield* readChroniclerPlace(null);
+  if (guildmaster === null) return unchanged(null);
   const summaries = yield* readMissionSummaryMap(opened.map((quest) => quest.id));
   const receivers = new Set<string>();
   for (const quest of opened) {

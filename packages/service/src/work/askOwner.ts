@@ -3,6 +3,7 @@ import { SqlClient } from "effect/sql";
 import { HarnessFailure, type HarnessPrompt, type PromptAnswer, textFieldOf } from "../core/index.ts";
 import type { ChoiceDecision } from "./approvalContracts.ts";
 import type { Approvals } from "./approvals.ts";
+import { isNotBeingDeletedOf } from "./questVisibility.ts";
 
 // Asking the owner for a thread that cannot use a tool: Claude Code's permission prompts and the harnesses' own questions.
 
@@ -11,7 +12,7 @@ export const readCallerRefusal = Effect.fnUntraced(function* (threadId: string, 
   const sql = yield* SqlClient.SqlClient;
   const [caller] = yield* sql<{
     blocker: string | null;
-  }>`SELECT blocker FROM threads WHERE id = ${threadId} AND is_deleting = 0`;
+  }>`SELECT blocker FROM threads WHERE id = ${threadId} AND ${isNotBeingDeletedOf(sql, "threads")}`;
   if (caller === undefined) return "Unknown thread.";
   if (caller.blocker === "Chatter" && name !== "send_thread_message" && name !== "report_result")
     return "Paused by the chatter guard. Wait for the owner.";

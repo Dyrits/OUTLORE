@@ -17,6 +17,7 @@ import { insertErrandReply, insertMessage, insertReply } from "./messaging.ts";
 import { ownCopyForChild } from "./ownCopies.ts";
 import { withThreadContext } from "./parentEcho.ts";
 import { copyOpeningToParent } from "./questOrigins.ts";
+import { isNotBeingDeletedOf, isQuestStandingOf } from "./questVisibility.ts";
 import { readStartingContext, startingContextRefusalOf } from "./startingContext.ts";
 import { newErrandTitle, titleOf } from "./titles.ts";
 import { depthOf, maxRunning, runningCountOf } from "./treeLimits.ts";
@@ -53,7 +54,7 @@ const readParent = Effect.fnUntraced(function* (parentId: string) {
       workspaceId: string | null;
     }
   >`SELECT mission_id AS missionId, harness, account_id AS accountId, model, effort, workspace_id AS workspaceId, backups, permission_mode AS permissionMode
-      FROM threads WHERE id = ${parentId} AND is_deleting = 0`;
+      FROM threads WHERE id = ${parentId} AND ${isNotBeingDeletedOf(sql, "threads")}`;
   return parent;
 });
 
@@ -80,16 +81,16 @@ const resolveAgentAnchor = Effect.fnUntraced(function* (
   // If the latest message is already an agent brief from a multi-errand split, keep sibling briefs tied to its trigger.
   if (replyToMessageId === null && target.replyToMessageId !== null) {
     const [splitErrand] = yield* sql<{ id: string }>`
-      SELECT id FROM threads WHERE anchor_message_id = ${target.id} AND is_opened_by_agent = 1 AND is_deleting = 0 LIMIT 1`;
+      SELECT id FROM threads WHERE anchor_message_id = ${target.id} AND is_opened_by_agent = 1 AND ${isNotBeingDeletedOf(sql, "threads")} LIMIT 1`;
     if (splitErrand !== undefined) return yield* insertErrandReply(parentId, brief, target.replyToMessageId);
   }
   const [existing] = yield* sql<{ id: string; isOpenedByAgent: number }>`
     SELECT id, is_opened_by_agent AS isOpenedByAgent FROM threads
-    WHERE anchor_message_id = ${target.id} AND is_deleting = 0 LIMIT 1`;
+    WHERE anchor_message_id = ${target.id} AND ${isNotBeingDeletedOf(sql, "threads")} LIMIT 1`;
   const [existingSplit] = yield* sql<{ id: string }>`
     SELECT t.id FROM threads t JOIN messages m ON m.id = t.anchor_message_id
     WHERE m.thread_id = ${parentId} AND m.reply_to_message_id = ${target.id}
-      AND t.is_opened_by_agent = 1 AND t.is_deleting = 0 LIMIT 1`;
+      AND t.is_opened_by_agent = 1 AND ${isNotBeingDeletedOf(sql)} LIMIT 1`;
   if (existing === undefined && existingSplit === undefined) return target.id;
   if (existing !== undefined && existing.isOpenedByAgent === 1) {
     const [firstMessage] = yield* sql<{ text: string }>`
@@ -294,7 +295,7 @@ export const openThreadByAgent = Effect.fnUntraced(function* (
     harness: HarnessName;
     missionId: string;
   }>`SELECT t.mission_id AS missionId, t.harness, t.account_id AS accountId, t.parent_id AS parentId, m.top_thread_id AS questThreadId
-    FROM threads t JOIN missions m ON m.id = t.mission_id WHERE t.id = ${callerId} AND t.is_deleting = 0`;
+    FROM threads t JOIN missions m ON m.id = t.mission_id WHERE t.id = ${callerId} AND ${isNotBeingDeletedOf(sql)}`;
   if (caller === undefined) return refusedOf("Unknown thread.");
   if (request.trim() === "") return refusedOf("The request is empty.");
   if (replyToMessageId !== null) {
@@ -381,7 +382,7 @@ export const reportResult = Effect.fnUntraced(function* (
       WHERE id = ${threadId}`;
   // The top thread's result asks the owner "Mark as done?"; the mission does not end on its own.
   if (thread.parentId === null) {
-    yield* sql`UPDATE missions SET is_asking_done = 1 WHERE id = ${thread.missionId} AND ending IS NULL`;
+    yield* sql`UPDATE missions SET is_asking_done = 1 WHERE id = ${thread.missionId} AND ${isQuestStandingOf(sql, ["open"], "missions")}`;
     return changed(null);
   }
   // One-message reporting: post the result as this errand's own reply and echo it to the parent in one step.

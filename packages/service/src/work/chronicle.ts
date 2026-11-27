@@ -2,9 +2,21 @@ import type { ChronicleItem } from "@outlore/contracts";
 import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { changed, unchanged } from "./followUps.ts";
+import {
+  endedStandings,
+  isErrandShownOf,
+  isQuestKindOf,
+  isQuestStandingOf,
+  isVisibleQuestOf,
+  questsFrom,
+} from "./questVisibility.ts";
 
 /** One row of the feed, with SQLite's numbers for what the contract reads as a boolean. */
 type ChronicleRow = Omit<ChronicleItem, "isUnread"> & { readonly isUnread: number };
+
+/** An errand `t` the owner can open in a quest `m` still going: what asks for the owner is never in an ended quest. */
+const openQuestsErrandOf = (sql: SqlClient.SqlClient) =>
+  sql`${isQuestKindOf(sql, "owner")} AND ${isQuestStandingOf(sql, ["open"])} AND ${isErrandShownOf(sql)}`;
 
 /**
  * The Chronicle's feed and record (CHG-0569, conversation-panes): what asks for the owner across realms and the
@@ -21,11 +33,11 @@ export const readChronicle = Effect.gen(function* () {
         NULL AS messageId, NULL AS missionId, NULL AS threadId, id AS realmId FROM workspaces WHERE archived_at IS NULL
       UNION ALL
       SELECT 'quest:' || m.id, 'QuestOpened', m.title, m.created_at, 1, 0, NULL, m.id, NULL, top.workspace_id
-        FROM missions m JOIN threads top ON top.id = m.top_thread_id WHERE m.is_guildmaster = 0 AND top.is_deleting = 0
+        FROM ${questsFrom(sql)} WHERE ${isVisibleQuestOf(sql)}
       UNION ALL
-      SELECT 'end:' || id, CASE ending WHEN 'Fulfilled' THEN 'Finished' ELSE 'Archived' END, title,
-        COALESCE(done_at, last_activity_at), 1, 0, NULL, id, NULL, NULL
-        FROM missions WHERE is_guildmaster = 0 AND ending IN ('Fulfilled', 'Archived')
+      SELECT 'end:' || m.id, CASE WHEN ${isQuestStandingOf(sql, ["done"])} THEN 'Finished' ELSE 'Archived' END, m.title,
+        COALESCE(m.done_at, m.last_activity_at), 1, 0, NULL, m.id, NULL, NULL
+        FROM ${questsFrom(sql)} WHERE ${isVisibleQuestOf(sql, endedStandings)}
       UNION ALL
       SELECT 'move:' || x.id, 'Moved', m.title, x.at, 1, 0, NULL, x.mission_id, NULL, x.to_workspace_id
         FROM quest_moves x JOIN missions m ON m.id = x.mission_id
@@ -39,7 +51,7 @@ export const readChronicle = Effect.gen(function* () {
           LEFT JOIN thread_reads r ON r.thread_id = t.id
           JOIN messages ms ON ms.thread_id = t.id AND ms.sender_kind IN ('agent', 'thread')
             AND ms.sent_at > COALESCE(r.read_at, 0)
-        WHERE m.is_guildmaster = 0 AND m.ending IS NULL AND t.is_deleting = 0 AND t.archived_at IS NULL
+        WHERE ${openQuestsErrandOf(sql)}
         GROUP BY t.id
       UNION ALL
       SELECT 'waiting:' || t.id, 'Waiting', t.title, MAX(q.asked_at), 1,
@@ -48,8 +60,7 @@ export const readChronicle = Effect.gen(function* () {
           JOIN missions m ON m.id = t.mission_id
           JOIN questions q ON q.thread_id = t.id AND q.outcome IS NULL
           LEFT JOIN thread_reads r ON r.thread_id = t.id
-        WHERE t.state = 'Attention' AND m.is_guildmaster = 0 AND m.ending IS NULL AND t.is_deleting = 0
-          AND t.archived_at IS NULL
+        WHERE t.state = 'Attention' AND ${openQuestsErrandOf(sql)}
         GROUP BY t.id
       UNION ALL
       SELECT 'failed:' || t.id, 'Failed', t.title,
@@ -60,8 +71,7 @@ export const readChronicle = Effect.gen(function* () {
         FROM threads t
           JOIN missions m ON m.id = t.mission_id
           LEFT JOIN thread_reads r ON r.thread_id = t.id
-        WHERE t.state = 'Failed' AND m.is_guildmaster = 0 AND m.ending IS NULL AND t.is_deleting = 0
-          AND t.archived_at IS NULL
+        WHERE t.state = 'Failed' AND ${openQuestsErrandOf(sql)}
         GROUP BY t.id
     )
     SELECT items.*, CASE

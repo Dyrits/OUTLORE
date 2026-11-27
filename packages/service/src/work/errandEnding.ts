@@ -5,6 +5,7 @@ import { eraseEmptyErrand } from "./deleting.ts";
 import { emptyErrandCondition } from "./emptyQuest.ts";
 import { changed } from "./followUps.ts";
 import { activeStates, haltThreads, relaxAncestors } from "./lifecycle.ts";
+import { isNotBeingDeletedOf } from "./questVisibility.ts";
 
 // Ending an errand on its own (thread-tree, Thread states): marking it done, reopening it, archiving, and restoring.
 // Each transition runs inside the caller's transaction and returns what follows it (commands.ts).
@@ -17,7 +18,7 @@ import { activeStates, haltThreads, relaxAncestors } from "./lifecycle.ts";
 export const markThreadDone = Effect.fn("markThreadDone")(function* (threadId: string) {
   const sql = yield* SqlClient.SqlClient;
   const [thread] = yield* sql<{ missionId: string; parentId: string | null }>`
-    SELECT mission_id AS missionId, parent_id AS parentId FROM threads WHERE id = ${threadId} AND is_deleting = 0`;
+    SELECT mission_id AS missionId, parent_id AS parentId FROM threads WHERE id = ${threadId} AND ${isNotBeingDeletedOf(sql, "threads")}`;
   if (thread === undefined) return yield* notFound("No such thread.");
   if (thread.parentId === null)
     return yield* invalid("The quest's own thread ends with the quest: mark the quest done.");
@@ -38,7 +39,7 @@ export const reopenThread = Effect.fn("reopenThread")(function* (threadId: strin
     parentId: string | null;
     state: string;
     archivedAt: number | null;
-  }>`SELECT mission_id AS missionId, parent_id AS parentId, state, archived_at AS archivedAt FROM threads WHERE id = ${threadId} AND is_deleting = 0`;
+  }>`SELECT mission_id AS missionId, parent_id AS parentId, state, archived_at AS archivedAt FROM threads WHERE id = ${threadId} AND ${isNotBeingDeletedOf(sql, "threads")}`;
   if (thread === undefined) return yield* notFound("No such thread.");
   if (thread.parentId === null || thread.state !== "Fulfilled" || thread.archivedAt !== null)
     return yield* invalid("This errand cannot be reopened.");
@@ -63,7 +64,7 @@ const readErrandTree = Effect.fnUntraced(function* (threadId: string) {
     )
     SELECT t.id, t.mission_id AS missionId, t.parent_id AS parentId, t.state, t.archived_at AS archivedAt,
       (SELECT p.archived_at FROM threads p WHERE p.id = t.parent_id) AS parentArchivedAt
-    FROM threads t JOIN subtree s ON s.id = t.id WHERE t.is_deleting = 0 ORDER BY t.rowid`;
+    FROM threads t JOIN subtree s ON s.id = t.id WHERE ${isNotBeingDeletedOf(sql)} ORDER BY t.rowid`;
   const [root] = rows;
   if (root === undefined) return yield* notFound("No such thread.");
   if (root.parentId === null) return yield* invalid("The quest's own thread ends with the quest: archive the quest.");

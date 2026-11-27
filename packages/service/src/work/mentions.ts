@@ -2,6 +2,7 @@ import { type Mentionable, type MentionReference, mentionReferencesOf, mentionTo
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { readMissionSummaryMap } from "./matching.ts";
+import { isNotBeingDeletedOf, isQuestKindOf, isQuestStandingOf, unarchivedStandings } from "./questVisibility.ts";
 
 // Quests and errands the owner names with `@`, and realms with `#` (thread-messaging, Who can message whom; CHG-0181): what the
 // menu offers, the reference appended to the message the harness reads, and what a mention opens for the turn it reaches.
@@ -19,7 +20,7 @@ type ThreadRow = {
  * read or message, so what is offered and what is reachable cannot drift apart. `m` is the quest's row.
  */
 const isOpenQuestOf = (sql: SqlClient.SqlClient) =>
-  sql`(m.ending IS NULL OR m.ending <> 'Archived') AND m.is_guildmaster = 0`;
+  sql`${isQuestStandingOf(sql, unarchivedStandings)} AND ${isQuestKindOf(sql, "owner")}`;
 
 /** Whether `m` is the owner's own message, rather than a service-made run or routed suggestion. */
 export const isOwnerMessageOf = (sql: SqlClient.SqlClient) =>
@@ -49,12 +50,12 @@ export const listMentionables = Effect.gen(function* () {
   const quests = yield* sql<{ id: string; title: string; realmName: string | null }>`
     SELECT m.id, m.title, w.name AS realmName FROM missions m
       JOIN threads top ON top.id = m.top_thread_id LEFT JOIN workspaces w ON w.id = top.workspace_id
-    WHERE ${isOpenQuestOf(sql)} AND top.is_deleting = 0
+    WHERE ${isOpenQuestOf(sql)} AND ${isNotBeingDeletedOf(sql, "top")}
     ORDER BY m.last_activity_at DESC`;
   const threads = yield* sql<ThreadRow>`
     SELECT t.id, t.mission_id AS missionId, t.parent_id AS parentId, t.title FROM threads t
       JOIN missions m ON m.id = t.mission_id
-    WHERE ${isOpenQuestOf(sql)} AND t.is_deleting = 0
+    WHERE ${isOpenQuestOf(sql)} AND ${isNotBeingDeletedOf(sql)}
     ORDER BY t.rowid`;
   const realms = yield* sql<{ id: string; name: string; path: string | null }>`
     SELECT id, name, path FROM workspaces WHERE archived_at IS NULL ORDER BY name COLLATE NOCASE`;
@@ -84,7 +85,7 @@ const readSideQuest = Effect.fnUntraced(function* (threadId: string) {
   const sql = yield* SqlClient.SqlClient;
   const [row] = yield* sql<{ missionId: string; state: string }>`
       SELECT t.mission_id AS missionId, t.state FROM threads t JOIN missions m ON m.id = t.mission_id
-      WHERE t.id = ${threadId} AND t.parent_id IS NOT NULL AND t.is_deleting = 0 AND ${isOpenQuestOf(sql)}`;
+      WHERE t.id = ${threadId} AND t.parent_id IS NOT NULL AND ${isNotBeingDeletedOf(sql)} AND ${isOpenQuestOf(sql)}`;
   return row ?? null;
 });
 
@@ -99,7 +100,7 @@ const readQuest = Effect.fnUntraced(function* (missionId: string) {
   }>`
       SELECT m.id, m.title, m.top_thread_id AS topThreadId, w.name AS workspaceName
       FROM missions m JOIN threads top ON top.id = m.top_thread_id LEFT JOIN workspaces w ON w.id = top.workspace_id
-      WHERE m.id = ${missionId} AND ${isOpenQuestOf(sql)} AND top.is_deleting = 0`;
+      WHERE m.id = ${missionId} AND ${isOpenQuestOf(sql)} AND ${isNotBeingDeletedOf(sql, "top")}`;
   const summaries = yield* readMissionSummaryMap(rows.map((row) => row.id));
   return rows.map((row) => ({ ...row, state: summaries.get(row.id)?.state ?? "Resting" }));
 });
@@ -201,7 +202,7 @@ export const readTurnReach = Effect.fnUntraced(function* (threadId: string) {
   // A sender being deleted can no longer be answered.
   const delivered = yield* sql<{ text: string; senderKind: string; fromThreadId: string | null; isOwner: number }>`
       SELECT m.text, m.sender_kind AS senderKind, s.id AS fromThreadId, (${isOwnerMessageOf(sql)}) AS isOwner FROM messages m
-        LEFT JOIN threads s ON s.id = m.sender_thread_id AND s.is_deleting = 0
+        LEFT JOIN threads s ON s.id = m.sender_thread_id AND ${isNotBeingDeletedOf(sql, "s")}
       WHERE m.thread_id = ${threadId} AND m.sender_kind IN ('user', 'thread') AND m.delivered_turn_id = (
         SELECT t.id FROM turns t WHERE t.thread_id = ${threadId} ORDER BY t.started_at DESC, t.rowid DESC LIMIT 1)`;
   const readable = new Set<string>();

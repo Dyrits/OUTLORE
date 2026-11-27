@@ -2,6 +2,7 @@ import { HarnessName, type UsageAmounts, type UsageDimension, type UsageRow } fr
 import { Schema } from "effect";
 import { consumptionColumns, pricedTurnsColumn } from "../core/index.ts";
 import { type ConsumptionRow, consumptionOf } from "./consumption.ts";
+import { questKindTextOf } from "./questVisibility.ts";
 
 // How the usage page shapes the turns it reads (budget-control, Reserves usage page): the columns that sum them, the names
 // the owner gave, and the order of a breakdown's rows.
@@ -69,8 +70,8 @@ export const names = {
   Day: "NULL",
   Harness: "NULL",
   Model: "NULL",
-  Quest: `CASE WHEN mi.is_guildmaster = 1 THEN '${chroniclerName}' ELSE mi.title END`,
-  Realm: `CASE WHEN mi.id IS NULL THEN NULL WHEN mi.is_guildmaster = 1 THEN '${chroniclerName}' ELSE w.name END`,
+  Quest: `CASE WHEN ${questKindTextOf("chronicler", "mi")} THEN '${chroniclerName}' ELSE mi.title END`,
+  Realm: `CASE WHEN mi.id IS NULL THEN NULL WHEN ${questKindTextOf("chronicler", "mi")} THEN '${chroniclerName}' ELSE w.name END`,
 } satisfies Record<UsageDimension, string>;
 
 /** Biggest first: rows with a price by cost, then rows with none by tokens; days newest first. */

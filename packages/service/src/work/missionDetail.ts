@@ -17,6 +17,7 @@ import { shownStatesOf } from "./missionStates.ts";
 import { listMissionSummaries } from "./missionSummaries.ts";
 import { readOwnCopy } from "./ownCopies.ts";
 import { isPendingDeliveryOf } from "./pendingMessages.ts";
+import { isErrandArchivedOf, isNotArchivedErrandOf, isQuestKindOf } from "./questVisibility.ts";
 import { listThreadSuggestions } from "./suggestionStore.ts";
 import { readWorkingFolder } from "./workingFolders.ts";
 import { readThreadWorkspace } from "./workspaces.ts";
@@ -50,7 +51,7 @@ const listThreads = Effect.fnUntraced(function* (
         FROM threads t JOIN tree ON t.parent_id = tree.id
       )
       SELECT t.id, t.parent_id AS parentId, t.title, t.state, tree.depth, tree.path,
-        (t.archived_at IS NOT NULL) AS isArchived, ${sql.literal(emptyErrandCondition("t.id"))} AS isEmpty,
+        ${isErrandArchivedOf(sql)} AS isArchived, ${sql.literal(emptyErrandCondition("t.id"))} AS isEmpty,
         t.is_opened_by_agent AS isOpenedByAgent, t.is_aside AS isAside,
         (SELECT COALESCE(MIN(m.sent_at), 0) FROM messages m WHERE m.thread_id = t.id) AS openedAt,
         (SELECT COALESCE(MAX(m.sent_at), 0) FROM messages m WHERE m.thread_id = t.id) AS lastActivityAt,
@@ -59,7 +60,7 @@ const listThreads = Effect.fnUntraced(function* (
         ${sql.literal(replyCountOf("t"))} AS replyCount,
         ${sql.literal(lastSampleOf("t.id", "user"))} AS lastOwnerText, ${sql.literal(lastSampleOf("t.id", "agent"))} AS lastReplyText
       FROM tree JOIN threads t ON t.id = tree.id
-      WHERE t.mission_id = ${missionId} AND (${shouldIncludeArchived ? 1 : 0} = 1 OR t.archived_at IS NULL)
+      WHERE t.mission_id = ${missionId} AND (${shouldIncludeArchived ? 1 : 0} = 1 OR ${isNotArchivedErrandOf(sql)})
       ORDER BY tree.path`;
   const threads = rows.map(({ lastOwnerText, lastReplyText, path: _path, ...row }) => ({
     ...row,
@@ -110,7 +111,7 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
       isGuildmaster: number;
     }
   >`SELECT t.id, t.model, t.effort, t.failure, t.blocker, t.harness, t.account_id AS accountId, a.label AS accountLabel,
-        t.permission_mode AS permissionMode, m.is_guildmaster AS isGuildmaster,
+        t.permission_mode AS permissionMode, ${isQuestKindOf(sql, "chronicler")} AS isGuildmaster,
         (SELECT u.harness FROM turns u WHERE u.thread_id = t.id AND u.status = 'running' ORDER BY u.started_at DESC, u.rowid DESC LIMIT 1) AS turnHarness,
         (SELECT u.model FROM turns u WHERE u.thread_id = t.id AND u.status = 'running' ORDER BY u.started_at DESC, u.rowid DESC LIMIT 1) AS turnModel
       FROM threads t JOIN missions m ON m.id = t.mission_id LEFT JOIN accounts a ON a.id = t.account_id WHERE t.id = ${selected.id}`;
@@ -135,7 +136,7 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
   >`
       SELECT m.id, m.thread_id AS threadId, m.reply_to_message_id AS replyToMessageId, m.sender_kind AS sender, m.model, m.harness, m.text, m.sequence, m.sent_at AS sentAt,
         m.sender_thread_id AS fromThreadId, COALESCE(s.title, m.sender_title) AS fromTitle, m.is_result AS isResult,
-        CASE WHEN sm.is_guildmaster = 0 THEN s.mission_id END AS fromMissionId,
+        CASE WHEN ${isQuestKindOf(sql, "owner", "sm")} THEN s.mission_id END AS fromMissionId,
         (m.is_queued = 1 AND m.delivered_turn_id IS NULL) AS isQueued, (m.delivered_turn_id IS NOT NULL OR m.is_conversation_only = 1) AS isDelivered,
         ru.input AS usageInput, ru.output AS usageOutput, ru.cache_read AS usageCacheRead,
         ru.cache_creation AS usageCacheCreation, ru.estimate AS usageEstimate, ru.reported AS usageReported

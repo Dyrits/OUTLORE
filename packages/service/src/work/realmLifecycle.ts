@@ -16,6 +16,7 @@ import { changed } from "./followUps.ts";
 import { updateJournal } from "./journal.ts";
 import { haltThreads } from "./lifecycle.ts";
 import { moveQuest } from "./questMoves.ts";
+import { isVisibleQuestOf, questsFrom, standingOf } from "./questVisibility.ts";
 import { validateRealmName } from "./realmNames.ts";
 import { renameRealm } from "./workspaces.ts";
 
@@ -33,7 +34,7 @@ export const previewRealmArchive = Effect.fn("previewRealmArchive")(function* (w
   const missions = yield* sql<{ id: string; title: string; ending: string | null; isRitual: number }>`
     SELECT m.id, m.title, m.ending, EXISTS (SELECT 1 FROM rituals r WHERE r.mission_id = m.id) AS isRitual
     FROM missions m JOIN threads top ON top.id = m.top_thread_id
-    WHERE top.workspace_id = ${workspaceId} AND m.is_guildmaster = 0 ORDER BY m.id`;
+    WHERE top.workspace_id = ${workspaceId} AND ${isVisibleQuestOf(sql)} ORDER BY m.id`;
   const rituals = yield* sql<{ id: RitualId; title: string; isOn: number }>`SELECT r.id, m.title, r.is_on AS isOn
     FROM rituals r JOIN missions m ON m.id = r.mission_id JOIN threads top ON top.id = m.top_thread_id
     WHERE top.workspace_id = ${workspaceId} ORDER BY r.id`;
@@ -41,13 +42,13 @@ export const previewRealmArchive = Effect.fn("previewRealmArchive")(function* (w
     FROM intels WHERE scope = 'Workspace' AND workspace_id = ${workspaceId} ORDER BY id`;
   const threads = yield* sql`SELECT t.id, t.parent_id, t.state, t.generation, t.workspace_id FROM threads t
     JOIN missions m ON m.id = t.mission_id JOIN threads top ON top.id = m.top_thread_id
-    WHERE top.workspace_id = ${workspaceId} AND m.is_guildmaster = 0 ORDER BY t.id`;
+    WHERE top.workspace_id = ${workspaceId} AND ${isVisibleQuestOf(sql)} ORDER BY t.id`;
   const working: string[] = [];
   const quests: RealmArchiveQuest[] = [];
   for (const mission of missions) {
     const ids = yield* readWorkingIds(mission.id);
     working.push(...ids);
-    if (mission.isRitual === 0 && mission.ending !== "Archived")
+    if (mission.isRitual === 0 && standingOf(mission.ending) !== "archived")
       quests.push({ id: mission.id as MissionId, isWorking: ids.length > 0, title: mission.title });
   }
   // Even an idle descendant waiting for a running slot changes what the owner is archiving.
@@ -120,11 +121,11 @@ export const archiveRealm = Effect.fn("archiveRealm")(function* (
     const move = yield* moveQuest(id, null);
     threadsToWake.push(...move.followUps.threadsToWake);
   }
-  const quests = yield* sql<{ id: string; ending: string | null }>`SELECT m.id, m.ending FROM missions m
-    JOIN threads top ON top.id = m.top_thread_id WHERE top.workspace_id = ${workspaceId} AND m.is_guildmaster = 0
+  const quests = yield* sql<{ id: string; ending: string | null }>`SELECT m.id, m.ending FROM ${questsFrom(sql)}
+    WHERE top.workspace_id = ${workspaceId} AND ${isVisibleQuestOf(sql)}
     AND NOT EXISTS (SELECT 1 FROM rituals r WHERE r.mission_id = m.id)`;
   for (const quest of quests) {
-    if (quest.ending === "Archived") continue;
+    if (standingOf(quest.ending) === "archived") continue;
     yield* sql`INSERT INTO realm_archived_quests (workspace_id, mission_id, previous_ending)
       VALUES (${workspaceId}, ${quest.id}, ${quest.ending})`;
     const ids = yield* readWorkingIds(quest.id);

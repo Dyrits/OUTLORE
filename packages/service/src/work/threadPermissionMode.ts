@@ -3,6 +3,7 @@ import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { type ModeTerms, notFound, readSettings } from "../core/index.ts";
 import { changed } from "./followUps.ts";
+import { isNotBeingDeletedOf, isQuestKindOf } from "./questVisibility.ts";
 
 /** The permission mode set directly on a thread, or null when it inherits the Workshop default. */
 export const readThreadPermissionMode = Effect.fnUntraced(function* (threadId: string) {
@@ -18,7 +19,7 @@ export const readRealmPermissionMode = Effect.fnUntraced(function* (realmId: str
   const sql = yield* SqlClient.SqlClient;
   const [channel] = yield* sql<{ mode: ThreadPermissionMode | null }>`
     SELECT t.permission_mode AS mode FROM missions m JOIN threads t ON t.id = m.top_thread_id
-    WHERE m.is_guildmaster = 1 AND m.chronicler_channel = ${realmId} AND t.is_deleting = 0
+    WHERE ${isQuestKindOf(sql, "chronicler")} AND m.chronicler_channel = ${realmId} AND ${isNotBeingDeletedOf(sql)}
   `;
   return channel?.mode ?? null;
 });
@@ -30,7 +31,7 @@ export const setThreadPermissionMode = Effect.fnUntraced(function* (
 ) {
   const sql = yield* SqlClient.SqlClient;
   const [thread] = yield* sql<{ id: string }>`
-    UPDATE threads SET permission_mode = ${mode} WHERE id = ${threadId} AND is_deleting = 0 RETURNING id
+    UPDATE threads SET permission_mode = ${mode} WHERE id = ${threadId} AND ${isNotBeingDeletedOf(sql, "threads")} RETURNING id
   `;
   if (thread === undefined) return yield* notFound("No such thread.");
   return changed(null);

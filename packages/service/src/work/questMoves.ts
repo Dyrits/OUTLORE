@@ -5,6 +5,7 @@ import { changed, unchanged } from "./followUps.ts";
 import { updateJournal } from "./journal.ts";
 import { releaseThread, waitsInTurn } from "./lifecycle.ts";
 import { placeQuestOrigin } from "./questOrigins.ts";
+import { isNotBeingDeletedOf, isVisibleQuestOf, questsFrom } from "./questVisibility.ts";
 import { requireActiveRealm } from "./realmAccess.ts";
 
 // Quest moves (mission-tracking, Quest placement and moves): a quest's realm is its top thread's workspace, inherited
@@ -28,7 +29,7 @@ export const moveQuest = Effect.fn("moveQuest")(function* (missionId: string, re
   const sql = yield* SqlClient.SqlClient;
   const [mission] = yield* sql<{
     topThreadId: string;
-  }>`SELECT top_thread_id AS topThreadId FROM missions WHERE id = ${missionId} AND is_guildmaster = 0`;
+  }>`SELECT m.top_thread_id AS topThreadId FROM ${questsFrom(sql)} WHERE m.id = ${missionId} AND ${isVisibleQuestOf(sql)}`;
   if (mission === undefined) return yield* notFound("No such quest.");
   if (realmId !== null) yield* requireActiveRealm(realmId);
   const [destination] =
@@ -56,8 +57,8 @@ export const moveQuest = Effect.fn("moveQuest")(function* (missionId: string, re
   yield* sql`INSERT INTO quest_moves (id, mission_id, from_workspace_id, to_workspace_id, at)
     VALUES (${crypto.randomUUID()}, ${missionId}, ${source?.workspaceId ?? null}, ${realmId}, ${at})`;
   yield* placeQuestOrigin(mission.topThreadId);
-  const held = yield* sql<{ id: string }>`SELECT id FROM threads
-    WHERE mission_id = ${missionId} AND state = 'Attention' AND blocker = 'MissingWorkspace' AND is_deleting = 0`;
+  const held = yield* sql<{ id: string }>`SELECT t.id FROM threads t
+    WHERE t.mission_id = ${missionId} AND t.state = 'Attention' AND t.blocker = 'MissingWorkspace' AND ${isNotBeingDeletedOf(sql)}`;
   for (const thread of held) yield* releaseThread(thread.id);
   const where = destination.path === null ? "no folder: it works in its own scratch folder" : destination.path;
   yield* updateJournal(

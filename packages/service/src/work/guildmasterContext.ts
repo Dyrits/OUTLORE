@@ -5,6 +5,7 @@ import { readSettings } from "../core/index.ts";
 import { isGuildmasterThread } from "./guildmasterPlace.ts";
 import { timeOf } from "./journal.ts";
 import { openingRequestOf, readMissionSummaryMap } from "./matching.ts";
+import { isQuestStandingOf, isVisibleQuestOf, questsFrom, unarchivedStandings } from "./questVisibility.ts";
 
 /** How many quests Chronicler's dashboard text lists at most; the latest ones. */
 const maxListedQuests = 60;
@@ -20,7 +21,7 @@ export const readViewingLine = Effect.fnUntraced(function* (threadId: string, vi
     viewing.missionId === null || viewing.missionId === undefined
       ? []
       : yield* sql<{ id: string; title: string }>`
-            SELECT id, title FROM missions WHERE id = ${viewing.missionId} AND is_guildmaster = 0`;
+            SELECT m.id, m.title FROM ${questsFrom(sql)} WHERE m.id = ${viewing.missionId} AND ${isVisibleQuestOf(sql)}`;
   // The screen's name is the app's words: kept to one plain line, so it cannot pose as an instruction.
   const screen = viewing.screen
     .replace(/[[\]"]/g, " ")
@@ -76,7 +77,7 @@ export const readGuildmasterContext = Effect.gen(function* () {
       JOIN threads top ON top.id = m.top_thread_id
       LEFT JOIN journals j ON j.mission_id = m.id
       LEFT JOIN workspaces w ON w.id = top.workspace_id
-    WHERE m.is_guildmaster = 0 AND top.is_deleting = 0 AND (m.ending IS NULL OR m.ending = 'Fulfilled')
+    WHERE ${isVisibleQuestOf(sql, unarchivedStandings)}
       AND NOT EXISTS (SELECT 1 FROM rituals r WHERE r.mission_id = m.id)
     ORDER BY m.last_activity_at DESC LIMIT ${maxListedQuests}`;
   // The state is the one the dashboard shows: Fulfilled or Archived once ended, Fresh while empty, else the roll-up of its top thread.
@@ -96,7 +97,7 @@ export const readGuildmasterContext = Effect.gen(function* () {
     setTierLines.length === 0 ? ["None set: every quest starts on the owner's default Companion."] : setTierLines;
   const rituals = yield* sql<{ isOn: number; schedule: string; title: string }>`
     SELECT m.title, r.schedule, r.is_on AS isOn FROM rituals r JOIN missions m ON m.id = r.mission_id
-    WHERE m.ending IS NULL OR m.ending = 'Fulfilled' ORDER BY m.title`;
+    WHERE ${isQuestStandingOf(sql, unarchivedStandings)} ORDER BY m.title`;
   return [
     "# Realms",
     ...(yield* readRealmLines),

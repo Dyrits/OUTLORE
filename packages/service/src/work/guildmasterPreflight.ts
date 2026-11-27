@@ -5,6 +5,7 @@ import { isSettingName, mayWriteSetting, readSettings, type SettingWriter, setti
 import { readWorkingIds } from "./ending.ts";
 import { readOptionalRealm } from "./guildmasterPlace.ts";
 import { parseJson } from "./guildmasterText.ts";
+import { everyStanding, isNotBeingDeletedOf, isQuestKindOf, isVisibleQuestOf } from "./questVisibility.ts";
 import type { ArgumentsOf } from "./threadTools.ts";
 import { ritualTitleOf, titleOf } from "./titles.ts";
 
@@ -46,7 +47,7 @@ export const readQuestAction = Effect.fnUntraced(function* (args: ArgumentsOf<"a
   const sql = yield* SqlClient.SqlClient;
   const [quest] = yield* sql<{ id: string; title: string; ending: string | null }>`
       SELECT m.id, m.title, m.ending FROM missions m JOIN threads top ON top.id = m.top_thread_id
-      WHERE m.id = ${args.mission} AND m.is_guildmaster = 0 AND top.is_deleting = 0`;
+      WHERE m.id = ${args.mission} AND ${isVisibleQuestOf(sql)}`;
   if (quest === undefined) return refusal("Not done: no such quest.");
   if (args.action === "Rename" && titleOf(args.title ?? "") === "") return refusal("Not done: give the new title.");
   const ids: ReadonlyArray<string> = args.action === "Stop" ? yield* readWorkingIds(args.mission) : [];
@@ -63,9 +64,9 @@ export const readRitualPreflight = Effect.fnUntraced(function* (callerId: string
     isControl: number;
     channel: string | null;
     ritualId: string | null;
-  }>`SELECT m.id AS missionId, m.is_guildmaster AS isControl, m.chronicler_channel AS channel,
+  }>`SELECT m.id AS missionId, ${isQuestKindOf(sql, "chronicler")} AS isControl, m.chronicler_channel AS channel,
       r.id AS ritualId FROM threads t JOIN missions m ON m.id = t.mission_id
-      LEFT JOIN rituals r ON r.mission_id = m.id WHERE t.id = ${callerId} AND t.is_deleting = 0`;
+      LEFT JOIN rituals r ON r.mission_id = m.id WHERE t.id = ${callerId} AND ${isNotBeingDeletedOf(sql)}`;
   if (caller === undefined || caller.ritualId !== null) return refusal("A Ritual run cannot create a Ritual.");
   const isLegacyConversation = caller.isControl === 1 && caller.channel === null;
   if (!isLegacyConversation && (args.realm !== undefined || args.origin !== undefined))
@@ -83,7 +84,7 @@ export const readRitualPreflight = Effect.fnUntraced(function* (callerId: string
         }>`SELECT w.id AS realmId, w.name, w.path, w.archived_at AS archivedAt
     FROM missions m JOIN threads t ON t.id = m.top_thread_id
     LEFT JOIN workspaces w ON w.id = t.workspace_id
-    WHERE m.id = ${originMissionId} AND m.is_guildmaster = 0 AND t.is_deleting = 0
+    WHERE m.id = ${originMissionId} AND ${isVisibleQuestOf(sql, everyStanding, { top: "t" })}
       AND NOT EXISTS (SELECT 1 FROM rituals WHERE mission_id = m.id)`;
   if (originMissionId !== null && origin === undefined) return refusal("No such origin quest.");
   const [channelRealm] =

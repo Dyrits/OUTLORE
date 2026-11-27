@@ -9,6 +9,7 @@ import { fallbackNoteOf, ritualStartOf } from "./guildmasterCompanions.ts";
 import { isGuildmasterThread, settingWriterOfCaller } from "./guildmasterPlace.ts";
 import { readRitualPreflight, readSettingChange } from "./guildmasterPreflight.ts";
 import { placeOf, threadsLineOf } from "./guildmasterText.ts";
+import { isVisibleQuestOf, questsFrom } from "./questVisibility.ts";
 import { deriveRealmCreation, deriveRealmRename } from "./realmActions.ts";
 import { readRitualEdit } from "./ritualEdits.ts";
 import type { ScopedAction } from "./ritualScope.ts";
@@ -95,10 +96,12 @@ const deriveQuestAction = Effect.fnUntraced(function* (args: ArgumentsOf<"act_on
   const sql = yield* SqlClient.SqlClient;
   const [quest] = yield* sql<{ id: string; title: string; ending: string | null }>`
       SELECT m.id, m.title, m.ending FROM missions m JOIN threads top ON top.id = m.top_thread_id
-      WHERE m.id = ${args.mission} AND m.is_guildmaster = 0 AND top.is_deleting = 0`;
+      WHERE m.id = ${args.mission} AND ${isVisibleQuestOf(sql)}`;
   if (quest === undefined) return null;
   const rivals = (yield* sql<{ title: string }>`
-      SELECT title FROM missions WHERE is_guildmaster = 0 AND id <> ${quest.id}`).map((row) => row.title);
+      SELECT m.title FROM ${questsFrom(sql)} WHERE ${isVisibleQuestOf(sql)} AND m.id <> ${quest.id}`).map(
+    (row) => row.title,
+  );
   const targets = [quest.title];
   const scopeTargets = [quest.id, quest.title];
   if (args.action === "Rename") {

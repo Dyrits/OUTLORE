@@ -3,6 +3,7 @@ import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { ensureGuildmaster } from "./guildmasterPlace.ts";
 import { insertMessage } from "./messaging.ts";
+import { isNotBeingDeletedOf, isQuestKindOf } from "./questVisibility.ts";
 
 /** Formats a child thread's visible conversation so its parent can read the full context. */
 export const formatThreadContext = Effect.fnUntraced(function* (
@@ -63,9 +64,9 @@ export const echoUserMessageToParent = Effect.fnUntraced(function* (
     workspaceId: string | null;
     isGuildmaster: number;
   }>`
-    SELECT t.parent_id AS parentId, t.workspace_id AS workspaceId, m.is_guildmaster AS isGuildmaster
+    SELECT t.parent_id AS parentId, t.workspace_id AS workspaceId, ${isQuestKindOf(sql, "chronicler")} AS isGuildmaster
     FROM threads t JOIN missions m ON m.id = t.mission_id
-    WHERE t.id = ${threadId} AND t.is_deleting = 0`;
+    WHERE t.id = ${threadId} AND ${isNotBeingDeletedOf(sql)}`;
   if (thread === undefined || thread.isGuildmaster === 1) return noWakes;
   const echoText = yield* withThreadContext(threadId, text, scope === "FullContext", sentMessageId);
   if (thread.parentId !== null) {
