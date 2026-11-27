@@ -74,6 +74,27 @@ describe("listing the presets beside the details", () => {
     expect(markup).not.toContain("unsaved");
   });
 
+  it("distinguishes rows that share a display name by their explicit id when looking up drafts and notes", () => {
+    const duplicateNameEntries = [
+      { id: "Default", isChosen: true, kind: "preset" as const, preset: { ...heavy, name: "Default" } },
+      { id: "custom:Default", isChosen: false, kind: "preset" as const, preset: { ...heavy, name: "Default" } },
+    ];
+    const markup = renderToStaticMarkup(
+      createElement(PresetChooser, {
+        drafts: { "custom:Default": { ...runner("claude-haiku-4-5"), backups: [] } },
+        entries: duplicateNameEntries,
+        harnesses: null,
+        isChainListed: true,
+        isNav: true,
+        notes: {},
+        onPreset: () => {},
+      }),
+    );
+    expect(markup).toContain("Opus 5.5");
+    expect(markup).toContain("Haiku 4.5");
+    expect(markup.match(/unsaved/g)).toHaveLength(1);
+  });
+
   it("stacked, shows no chain under the name", () => {
     expect(chooserMarkup(null, false)).not.toContain("Sonnet 5.5 ·");
   });

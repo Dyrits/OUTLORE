@@ -53,6 +53,44 @@ export const workshopKept = {
 /** The kept unsaved chains. */
 export const useWorkshopKept = () => useSyncExternalStore(workshopKept.subscribe, workshopKept.get);
 
+/** Active save counts by Workshop focus key, so switching presets and returning keeps the editor locked until an in-flight save settles. */
+let savingCounts: Readonly<Record<string, number>> = {};
+const savingListeners = new Set<() => void>();
+
+const setSavingCounts = (next: Readonly<Record<string, number>>) => {
+  savingCounts = next;
+  for (const listener of savingListeners) listener();
+};
+
+export const workshopSaving = {
+  get: () => savingCounts,
+  isSaving: (key: string) => (ownValue(savingCounts, key) ?? 0) > 0,
+  subscribe: (listener: () => void) => {
+    savingListeners.add(listener);
+    return () => {
+      savingListeners.delete(listener);
+    };
+  },
+  track: async <Result>(key: string, action: () => Promise<Result>): Promise<Result> => {
+    const before = ownValue(savingCounts, key) ?? 0;
+    setSavingCounts({ ...savingCounts, [key]: before + 1 });
+    try {
+      return await action();
+    } finally {
+      const current = ownValue(savingCounts, key) ?? 0;
+      if (current <= 1) {
+        const { [key]: _done, ...others } = savingCounts;
+        setSavingCounts(others);
+      } else {
+        setSavingCounts({ ...savingCounts, [key]: current - 1 });
+      }
+    }
+  },
+};
+
+/** The Workshop focus keys with a save currently in flight. */
+export const useWorkshopSaving = () => useSyncExternalStore(workshopSaving.subscribe, workshopSaving.get);
+
 /** The Workshop focus after renaming `focus` to `nextName`: built-in tiers keep their tier key, while custom presets move to the new name. */
 export const renamedFocusOf = (focus: WorkshopFocus, nextName: string): WorkshopFocus =>
   focus.startsWith("custom:") ? `custom:${nextName}` : focus;

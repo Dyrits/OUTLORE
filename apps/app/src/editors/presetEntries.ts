@@ -8,7 +8,7 @@ export const customHint = "not saved yet";
 
 /** One row of the preset list: a preset, marked when the thread has its whole stack, or the Custom entry, which is always the chosen one. */
 export type PresetEntry =
-  | { readonly isChosen: boolean; readonly kind: "preset"; readonly preset: Preset }
+  | { readonly id?: string; readonly isChosen: boolean; readonly kind: "preset"; readonly preset: Preset }
   | { readonly isChosen: true; readonly kind: "custom" };
 
 /**

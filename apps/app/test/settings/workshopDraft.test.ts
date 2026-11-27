@@ -1,6 +1,12 @@
 import type { Tier } from "@outlore/contracts";
 import { describe, expect, it, vi } from "vitest";
-import { draftSeedOf, renamedFocusOf, workshopDraft, workshopKept } from "../../src/settings/workshopDraft";
+import {
+  draftSeedOf,
+  renamedFocusOf,
+  workshopDraft,
+  workshopKept,
+  workshopSaving,
+} from "../../src/settings/workshopDraft";
 
 const stack: Tier = { accountId: null, backups: [], effort: "high", harness: "claude", model: "opus" };
 
@@ -52,5 +58,21 @@ describe("the Workshop's draft preset", () => {
       ...defaults,
       backups: [],
     });
+  });
+
+  it("keeps a preset locked as saving across remounts until its delayed save settles", async () => {
+    const deferred = { resolve: () => {} };
+    const pending = workshopSaving.track(
+      "Light",
+      () =>
+        new Promise<void>((resolve) => {
+          deferred.resolve = resolve;
+        }),
+    );
+    expect(workshopSaving.isSaving("Light")).toBe(true);
+    expect(workshopSaving.isSaving("Heavy")).toBe(false);
+    deferred.resolve();
+    await pending;
+    expect(workshopSaving.isSaving("Light")).toBe(false);
   });
 });

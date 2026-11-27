@@ -35,7 +35,7 @@ export function PresetChooser({
   isNav: boolean;
   /** A line to show under a preset's name in place of its chain, such as a tier not set yet. */
   notes?: Readonly<Record<string, string>>;
-  onPreset: (preset: Preset) => void;
+  onPreset: (preset: Preset, id: string) => void;
 }) {
   return (
     <View style={isNav ? local.nav : local.card}>
@@ -43,9 +43,10 @@ export function PresetChooser({
       <View accessibilityLabel="Companion presets" accessibilityRole="radiogroup">
         {entries.map((entry) => {
           const label = entry.kind === "custom" ? customName : entry.preset.name;
-          const isEditing = entry.kind === "preset" && entry.preset.name === editing;
-          const unsaved = entry.kind === "preset" ? ownValue(drafts, entry.preset.name) : null;
-          const note = entry.kind === "preset" ? ownValue(notes, entry.preset.name) : null;
+          const entryKey = entry.kind === "preset" ? (entry.id ?? entry.preset.name) : "custom";
+          const isEditing = entry.kind === "preset" && entryKey === editing;
+          const unsaved = entry.kind === "preset" ? ownValue(drafts, entryKey) : null;
+          const note = entry.kind === "preset" ? ownValue(notes, entryKey) : null;
           const summary =
             entry.kind === "custom"
               ? customHint
@@ -113,8 +114,8 @@ export function PresetChooser({
               accessibilityRole="radio"
               accessibilityState={{ checked: entry.isChosen }}
               aria-checked={entry.isChosen}
-              key={entry.preset.name}
-              onPress={() => onPreset(entry.preset)}
+              key={entryKey}
+              onPress={() => onPreset(entry.preset, entryKey)}
               style={({ pressed }) => [rowStyle, pressed && local.pressed]}
             >
               {content}

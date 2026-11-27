@@ -8,10 +8,12 @@ import { Button } from "../ui/button";
 /** Opens an inline name form and leaves it open with the host's error if saving fails. */
 export function PresetNameForm({
   initialName = "",
+  isDisabled = false,
   label,
   onSave,
 }: {
   initialName?: string;
+  isDisabled?: boolean;
   label: string;
   onSave: (name: string) => Promise<unknown>;
 }) {
@@ -20,13 +22,14 @@ export function PresetNameForm({
   const [name, setName] = useState(initialName);
   const [error, setError] = useState<string | null>(null);
   const saving = useRef(false);
+  const isBusy = isDisabled || isSaving;
   const close = () => {
     setIsOpen(false);
     setError(null);
     setName(initialName);
   };
   const save = async () => {
-    if (saving.current || name.trim() === "") return;
+    if (isDisabled || saving.current || name.trim() === "") return;
     saving.current = true;
     setIsSaving(true);
     setError(null);
@@ -47,7 +50,7 @@ export function PresetNameForm({
       <TextInput
         accessibilityLabel="Preset name"
         autoFocus
-        editable={!isSaving}
+        editable={!isBusy}
         maxLength={80}
         onChangeText={setName}
         onSubmitEditing={save}
@@ -62,11 +65,11 @@ export function PresetNameForm({
         </Text>
       )}
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-        <Button isDisabled={isSaving || name.trim() === ""} label="Save preset" onPress={save} />
-        <Button isDisabled={isSaving} isPrimary={false} label="Cancel" onPress={close} />
+        <Button isDisabled={isBusy || name.trim() === ""} label="Save preset" onPress={save} />
+        <Button isDisabled={isBusy} isPrimary={false} label="Cancel" onPress={close} />
       </View>
     </View>
   ) : (
-    <Button isPrimary={false} label={label} onPress={() => setIsOpen(true)} />
+    <Button isDisabled={isBusy} isPrimary={false} label={label} onPress={() => setIsOpen(true)} />
   );
 }

@@ -1,5 +1,5 @@
 import type { Tier } from "@outlore/contracts";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { PresetChainEditor } from "../editors/presetChainEditor";
 import { PresetChooser } from "../editors/presetChooser";
@@ -18,8 +18,10 @@ import {
   renamedFocusOf,
   useWorkshopDraft,
   useWorkshopKept,
+  useWorkshopSaving,
   workshopDraft,
   workshopKept,
+  workshopSaving,
 } from "./workshopDraft";
 import { customFocusOf, type WorkshopFocus, type WorkshopPreset } from "./workshopTabs";
 
@@ -44,7 +46,10 @@ export function WorkshopCompanions({
   const [width, setWidth] = useState<number | null>(null);
   // Each Companion's unsaved chain, kept while another is shown and listed at once.
   const kept = useWorkshopKept();
+  const saving = useWorkshopSaving();
   const setKept = workshopKept.set;
+  const focusRef = useRef(focus);
+  focusRef.current = focus;
   if (settings === null) return <Text style={companionStyles.note}>Reading the settings…</Text>;
   const defaults = {
     accountId: null,
@@ -84,19 +89,14 @@ export function WorkshopCompanions({
   const isSplit = panelLayoutOf(width) === "split";
   const rows = [{ focus: "Default" as WorkshopFocus, hint: null, name: "Default", stack: defaultStack }, ...presets];
   const entries: ReadonlyArray<PresetEntry> = rows.map((row) => ({
+    id: row.focus,
     isChosen: !isDraft && row.focus === selected,
     kind: "preset",
     preset: { backups: row.stack?.backups ?? [], name: row.name, runner: row.stack ?? defaults },
   }));
   const notes = Object.fromEntries(
-    rows.filter((row) => row.stack === null).map((row) => [row.name, "Not set: starts on the default Companion"]),
+    rows.filter((row) => row.stack === null).map((row) => [row.focus, "Not set: starts on the default Companion"]),
   );
-  const draftsByName = Object.fromEntries(
-    rows.flatMap((row) => {
-      const value = ownValue(drafts, row.focus);
-      return value === null ? [] : [[row.name, value]];
-    }),
-  ) as Record<string, Tier>;
   return (
     <View
       onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
@@ -104,14 +104,14 @@ export function WorkshopCompanions({
     >
       <View style={isSplit ? companionStyles.nav : companionStyles.navStacked}>
         <PresetChooser
-          drafts={draftsByName}
+          drafts={drafts}
           entries={entries}
           harnesses={harnesses}
           isChainListed={true}
           isNav={isSplit}
           notes={notes}
-          onPreset={(chosen) => {
-            const row = rows.find((candidate) => candidate.name === chosen.name);
+          onPreset={(_chosen, id) => {
+            const row = rows.find((candidate) => candidate.focus === id);
             if (row !== undefined) onFocus(row.focus);
           }}
         />
@@ -144,18 +144,21 @@ export function WorkshopCompanions({
               harnesses={harnesses}
               initial={ownValue(drafts, "Default")}
               isPrimaryAccountShown={false}
+              isSaving={(ownValue(saving, "Default") ?? 0) > 0}
               name="Default"
               onDraft={(next) => setKept((current) => keptWith(current, "Default", defaultStack, next))}
               onSave={(next) =>
-                client.request({
-                  _tag: "ChangeSettings",
-                  change: {
-                    backups: next.backups,
-                    defaultEffort: next.effort,
-                    defaultHarness: next.harness,
-                    defaultModel: next.model,
-                  },
-                })
+                workshopSaving.track("Default", () =>
+                  client.request({
+                    _tag: "ChangeSettings",
+                    change: {
+                      backups: next.backups,
+                      defaultEffort: next.effort,
+                      defaultHarness: next.harness,
+                      defaultModel: next.model,
+                    },
+                  }),
+                )
               }
               stack={defaultStack}
             />
@@ -179,12 +182,15 @@ export function WorkshopCompanions({
                   client={client}
                   harnesses={harnesses}
                   initial={ownValue(drafts, preset.focus)}
+                  isSaving={(ownValue(saving, preset.focus) ?? 0) > 0}
                   name={preset.name}
                   onDraft={(next) => setKept((current) => keptWith(current, preset.focus, stack, next))}
-                  onSave={(next) => preset.save(next)}
+                  onSave={(next) => workshopSaving.track(preset.focus, () => preset.save(next))}
                   onSaveAs={async (name, next) => {
-                    await savePresetEdit(client, { _tag: "Add", name, stack: next });
-                    onFocus(customFocusOf(name));
+                    await workshopSaving.track(preset.focus, () =>
+                      savePresetEdit(client, { _tag: "Add", name, stack: next }),
+                    );
+                    if (focusRef.current === preset.focus) onFocus(customFocusOf(name));
                   }}
                   stack={stack}
                 />
@@ -198,7 +204,7 @@ export function WorkshopCompanions({
                     if (nextFocus !== preset.focus) {
                       setKept((current) => keptRenamed(current, preset.focus, nextFocus));
                     }
-                    onFocus(nextFocus);
+                    if (focusRef.current === preset.focus) onFocus(nextFocus);
                   }}
                 />
               </>

@@ -8,11 +8,21 @@ import { Button } from "../ui/button";
  * Puts a changed Companion and its backups back into the preset it was chosen from, after asking once.
  * Every other thread keeps what it has; only the preset changes.
  */
-export function PresetOverwrite({ name, onOverwrite }: { name: string; onOverwrite: () => Promise<unknown> }) {
+export function PresetOverwrite({
+  isDisabled = false,
+  name,
+  onOverwrite,
+}: {
+  isDisabled?: boolean;
+  name: string;
+  onOverwrite: () => Promise<unknown>;
+}) {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isBusy = isDisabled || isSaving;
   const overwrite = async () => {
+    if (isBusy) return;
     setIsSaving(true);
     setError(null);
     try {
@@ -30,9 +40,9 @@ export function PresetOverwrite({ name, onOverwrite }: { name: string; onOverwri
         <>
           <Text style={styles.body}>Replace “{name}” with this Companion and its backups?</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            <Button isDisabled={isSaving} label="Overwrite preset" onPress={overwrite} />
+            <Button isDisabled={isBusy} label="Overwrite preset" onPress={overwrite} />
             <Button
-              isDisabled={isSaving}
+              isDisabled={isBusy}
               isPrimary={false}
               label="Cancel"
               onPress={() => {
@@ -43,7 +53,12 @@ export function PresetOverwrite({ name, onOverwrite }: { name: string; onOverwri
           </View>
         </>
       ) : (
-        <Button isPrimary={false} label={`Overwrite “${name}”`} onPress={() => setIsConfirming(true)} />
+        <Button
+          isDisabled={isBusy}
+          isPrimary={false}
+          label={`Overwrite “${name}”`}
+          onPress={() => setIsConfirming(true)}
+        />
       )}
       {error !== null && (
         <Text accessibilityRole="alert" style={styles.error}>

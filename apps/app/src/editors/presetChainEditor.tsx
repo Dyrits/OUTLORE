@@ -1,5 +1,5 @@
 import type { HarnessList, Tier } from "@outlore/contracts";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import type { ServiceClient } from "../foundation/client";
 import { colors, fontSizes, fonts } from "../foundation/theme";
@@ -20,9 +20,10 @@ import { useDraftStack } from "./useDraftStack";
 export function PresetChainEditor({
   client,
   harnesses,
-  isPrimaryAccountShown = true,
   initial = null,
   isNew = false,
+  isPrimaryAccountShown = true,
+  isSaving: isExternallySaving = false,
   name,
   onDiscard,
   onDraft,
@@ -32,12 +33,14 @@ export function PresetChainEditor({
 }: {
   client?: ServiceClient;
   harnesses: HarnessList | null;
-  /** Whether the primary row can choose its account; the Workshop's Default primary has none, while its backups still can. */
-  isPrimaryAccountShown?: boolean;
   /** A draft kept from before, which the editor starts on while the saved stack is still the one it began from. */
   initial?: Tier | null;
   /** Whether the stack is a preset not made yet: it can only be saved under a name or discarded. */
   isNew?: boolean;
+  /** Whether the primary row can choose its account; the Workshop's Default primary has none, while its backups still can. */
+  isPrimaryAccountShown?: boolean;
+  /** Whether an earlier save of this preset is still pending across a remount, keeping the editor locked until it settles. */
+  isSaving?: boolean;
   /** What the preset is called, for the Overwrite question. */
   name: string;
   /** What Discard does for a new preset, which has no saved stack to go back to. */
@@ -51,27 +54,32 @@ export function PresetChainEditor({
   stack: Tier;
 }) {
   const { discard, edit, isChanged, shown } = useDraftStack(stack, initial);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isLocalSaving, setIsLocalSaving] = useState(false);
+  const isSavingRef = useRef(false);
+  const isSaving = isExternallySaving || isLocalSaving;
   const chain = chainOf(shown);
   const change = (next: ReadonlyArray<Runner>) => {
-    if (isSaving) return;
+    if (isSaving || isSavingRef.current) return;
     const nextStack = stackOf(next);
     if (nextStack === null) return;
     edit(nextStack);
     onDraft?.(isSameStack(nextStack, stack) ? null : nextStack);
   };
   const discardDraft = () => {
-    if (isSaving) return;
+    if (isSaving || isSavingRef.current) return;
     discard();
     onDraft?.(null);
     onDiscard?.();
   };
   const runSave = async (action: () => Promise<void>) => {
-    setIsSaving(true);
+    if (isExternallySaving || isSavingRef.current) return;
+    isSavingRef.current = true;
+    setIsLocalSaving(true);
     try {
       await action();
     } finally {
-      setIsSaving(false);
+      isSavingRef.current = false;
+      setIsLocalSaving(false);
     }
   };
   const footer = footerOf({ canSaveAs: onSaveAs !== undefined, isChanged, isNew });
@@ -92,6 +100,7 @@ export function PresetChainEditor({
             <>
               {footer.canOverwrite && (
                 <PresetOverwrite
+                  isDisabled={isSaving}
                   name={name}
                   onOverwrite={() =>
                     runSave(async () => {
@@ -103,6 +112,7 @@ export function PresetChainEditor({
               )}
               {onSaveAs !== undefined && footer.canSaveAs && (
                 <PresetNameForm
+                  isDisabled={isSaving}
                   label="Save as new"
                   onSave={(nextName) =>
                     runSave(async () => {

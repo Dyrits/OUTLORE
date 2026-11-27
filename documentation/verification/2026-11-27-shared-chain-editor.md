@@ -106,6 +106,7 @@
 - Pointer drag was not run as a mutation (C7).
 - A desktop window, a phone, and a live harness: not run.
 - An independent reviewer has not reproduced the end state; they reproduced `6ad0ed0`.
+- The two scripted Playwright browser checks (`drive_all.py`, `workshop_rename_delete.py`) depend on the external `repro-kit.tgz` archive, which is not in the repository and cannot currently be obtained from a fresh checkout; those checks cannot currently be independently reproduced without that archive.
 
 ## Reproduce
 
@@ -119,7 +120,7 @@ bunx vitest run apps/app
 bunx biome check
 ```
 
-The browser click-throughs below used an external verification archive (`repro-kit.tgz`, kept outside git; not present in a fresh checkout). With that archive unpacked into `kit`:
+The browser click-throughs below used an external verification archive (`repro-kit.tgz`, kept outside git; not present in a fresh checkout, so these two checks cannot currently be independently reproduced from a fresh checkout without obtaining that archive). With that archive unpacked into `kit`:
 
 ```sh
 tar xzf repro-kit.tgz && cd kit
