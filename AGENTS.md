@@ -63,7 +63,7 @@ Latest handoffs:
 
 - To resume running shell commands from message code blocks (fenced shell blocks, play button beside Copy, `!` terminal reuse with single-attempt exited-shell restart, reviewed and proof reproduced at `64339a82`; live desktop/browser check C4 remaining), read the [current handoff](.agents/handoffs/2026-11-27-1922-run-command-from-message.md). Handoffs are shared and committed.
 
-- To resume the shared companion chain editor (Overwrite, Discard and Save as new, draft shown unsaved in the list, six-model limit; the Workshop panel and the thread tab share the list, editor and management; independent review and the owner's go-ahead remaining), read the [current handoff](.agents/handoffs/2026-11-27-1628-shared-chain-editor-final-2.md). Handoffs are shared and committed.
+- To resume the shared companion chain editor (Overwrite, Discard and Save as new, draft shown unsaved in the list, six-model limit; the Workshop panel and the thread tab share the list, editor and management; Rename keeps the panel on the preset and unsaved chains outlive a switch of Companion; the follow-up awaits independent review and the pull request awaits the owner), read the [current handoff](.agents/handoffs/2026-11-27-1810-shared-chain-editor-final-3.md). Handoffs are shared and committed.
 
 - To resume the connector access diagnosis (why installed connectors reach no thread: composio without a key, gitlab.com refusing a self-hosted token, github's silent tools/list failure, atlassian's unstored sign-in; documented with live evidence, fixes not built), read the [current handoff](.agents/handoffs/2026-11-27-1431-connector-access-diagnosis.md). Handoffs are shared and committed.
 

@@ -37,7 +37,7 @@
 - **Reproduced:** author only.
 
 ### C3: Workshop controls
-- **Check:** `drive_all.py` "Workshop panel keeps the tier hint and Rename/Delete", the Default checks of C10, the "+ Add preset" text in the list check, and in a thread's edit mode: Rename to a new name, Delete asks to confirm, Cancel keeps the preset, confirming Delete removes it, and a reload agrees. A draft made before the rename follows the preset to its new name, and none is left after the delete (the independent final review found the draft staying under the old name; `keptRenamed` and `keptWithout` in `useDraftStack.ts` fix it, with 3 unit tests). `presetManagementFlow.test.ts` covers the steps of Delete.
+- **Check:** `drive_all.py` "Workshop panel keeps the tier hint and Rename/Delete", the Default checks of C10, the "+ Add preset" text in the list check, and in a thread's edit mode: Rename to a new name, Delete asks to confirm, Cancel keeps the preset, confirming Delete removes it, and a reload agrees. A draft made before the rename follows the preset to its new name, and none is left after the delete (the independent final review found the draft staying under the old name; `keptRenamed` and `keptWithout` in `useDraftStack.ts` fix it, with 3 unit tests). `presetManagementFlow.test.ts` covers the steps of Delete. In the Workshop panel itself, `workshop_rename_delete.py` (12 checks, kit) saves a preset, drafts on it, renames it (the draft follows and the panel stays on it), asks to Delete, Cancels (preset and draft kept), confirms Delete (preset and draft gone), reloads, and repeats Rename and Delete at 390 px. This found the panel staying on the old name after Rename; `onRenamed` now selects the renamed preset (CHG-0794). Before that fix the draft check failed in the real app; with the unsaved chains held in the component they were lost on every switch of Companion, so they are held in `workshopKept`, and removing its notification fails its unit test. Screenshots: `workshop-renamed-draft-desktop.png`, `workshop-delete-confirm-desktop.png`, `workshop-draft-390.png`, `workshop-delete-confirm-390.png`. At 390 px the panel closes when its preset is renamed (its table moves under the new name); pressing the preset's chevron reopens it with the draft kept.
 - **Shown able to fail:** mutation, the Delete ask step changed to stay idle: 1 test fails; restored. The tier hint check also passes at `b5abfbc`, so it proves the control was kept, not that the check can fail.
 - **Result:** pass.
 - **Reproduced:** author only.
@@ -94,14 +94,14 @@
 
 | Check | Command | Starting commit | End state |
 | --- | --- | --- | --- |
-| Tests | `bunx vitest run apps/app` | pass, 132 files, 1,084 passed, 6 skipped | pass, 135 files, 1,135 passed, 6 skipped |
+| Tests | `bunx vitest run apps/app` | pass, 132 files, 1,084 passed, 6 skipped | pass, 135 files, 1,136 passed, 6 skipped |
 | Typecheck | `cd apps/app && bunx tsc --noEmit` | pass | pass |
 | Biome | `bunx biome check` | 4 warnings, all `noImportantStyles` in `documentation/architecture-audit/*.html` | the same 4 warnings, none in changed files |
-| Real app | `drive_all.py` through `run.sh` | fails (first check) | 30 of 30 checks pass |
+| Real app | `drive_all.py` through `run.sh` | fails (first check) | 30 of 30 checks pass, plus 12 of 12 in `workshop_rename_delete.py` |
 
 ## Not proven
 
-- Rename and Delete in the Workshop panel itself: the click-through ran in a thread's edit mode, which shares the same component, not in the Workshop panel.
+- Resizing the window between phone and desktop widths with the panel open closes the panel (the click-throughs set the width first); not changed here.
 - The look of the effort bar and the layouts (C9): human judgment.
 - Pointer drag was not run as a mutation (C7).
 - A desktop window, a phone, and a live harness: not run.
@@ -118,8 +118,9 @@ bunx biome check
 tar xzf repro-kit.tgz && cd kit
 # needs Playwright for Python and Google Chrome; picks a free HTTP port, stops if it is busy
 REPO=/path/to/OUTLORE EXPORT_DIR=/tmp/webout OUT=/tmp/shots bash run.sh drive_all.py
+REPO=/path/to/OUTLORE EXPORT_DIR=/tmp/webout OUT=/tmp/shots bash run.sh workshop_rename_delete.py
 ```
 
 ## New files
 
-`documentation/verification/2026-11-27-shared-chain-editor/*.png` (screenshots) are committed with this proof. The repro kit (`drive_all.py`, `run.sh`, `README.md`) is kept outside the repository in `repro-kit.tgz` and is not committed.
+`documentation/verification/2026-11-27-shared-chain-editor/*.png` (screenshots) are committed with this proof. The repro kit (`drive_all.py`, `workshop_rename_delete.py`, `run.sh`, `README.md`) is kept outside the repository in `repro-kit.tgz` and is not committed.
