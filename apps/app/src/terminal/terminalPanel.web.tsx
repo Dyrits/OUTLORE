@@ -9,6 +9,7 @@ import { colors, fonts } from "../foundation/theme";
 import type { TerminalPanelProps } from "./terminalPanelTypes";
 import { nextTerminalRunActionOf, shouldAutoRestartTerminalOf, terminalKeyOf } from "./terminalScope";
 import { terminalTextOf } from "./terminalSnapshot";
+import { terminalThemeOf } from "./terminalTheme";
 
 /** The host's conversation shell, whose output can be attached to the next message from any screen (ADR 0020). */
 export function TerminalPanel({
@@ -29,6 +30,7 @@ export function TerminalPanel({
   const isRestartingRef = useRef(false);
   const isRunningRef = useRef(true);
   const hasAutoRestartedRef = useRef(false);
+  const hasOpenFailedRef = useRef(false);
   const pendingCommands = useRef<string[]>([]);
   const restartRef = useRef<() => void>(() => {});
   const ready = useRef(onReady);
@@ -61,6 +63,7 @@ export function TerminalPanel({
     run: (input: string) => {
       hasAutoRestartedRef.current = false;
       const action = nextTerminalRunActionOf({
+        hasOpenFailed: hasOpenFailedRef.current,
         isReady: isReady.current,
         isRestarting: isRestartingRef.current,
         isRunning: isRunningRef.current,
@@ -73,7 +76,11 @@ export function TerminalPanel({
         return;
       }
       pendingCommands.current.push(input);
-      if (action === "restart") {
+      if (action === "reopen") {
+        hasOpenFailedRef.current = false;
+        setError(null);
+        setGeneration((value) => value + 1);
+      } else if (action === "restart") {
         hasAutoRestartedRef.current = true;
         restartRef.current();
       }
@@ -95,46 +102,29 @@ export function TerminalPanel({
     const element = container.current;
     if (element === null) return;
     let isActive = true;
+    let hasExited = false;
     let hasNotifiedExit = false;
     let sequence: number | null = null;
     const pending: { text: string; sequence: number }[] = [];
     const pendingInput: string[] = [];
     isReady.current = false;
+    hasOpenFailedRef.current = false;
     const terminal = new Terminal({
       cursorBlink: true,
       fontFamily: fonts.mono,
       fontSize: 13,
       scrollback: 3000,
-      theme: {
-        background: colors.accentSoft,
-        black: colors.text,
-        blue: colors.accentText,
-        brightBlack: colors.textMuted,
-        brightBlue: colors.accentText,
-        brightCyan: colors.accent,
-        brightGreen: colors.successText,
-        brightMagenta: colors.violet,
-        brightRed: colors.danger,
-        brightWhite: colors.text,
-        brightYellow: colors.warningText,
-        cursor: colors.text,
-        cyan: colors.accent,
-        foreground: colors.text,
-        green: colors.successText,
-        magenta: colors.violet,
-        red: colors.danger,
-        white: colors.textSecondary,
-        yellow: colors.warningText,
-      },
+      theme: terminalThemeOf(),
     });
     surface.current = terminal;
     const fit = new FitAddon();
     terminal.loadAddon(fit);
     terminal.open(element);
     const onError = (reason: unknown) => {
+      if (!isActive) return;
       pendingCommands.current.length = 0;
       hasAutoRestartedRef.current = false;
-      if (isActive) setError(String(reason));
+      setError(String(reason));
     };
     const write = (text: string, next: number) => {
       if (sequence === null) {
@@ -157,6 +147,7 @@ export function TerminalPanel({
       if (!isActive || frame.id !== key) return;
       if (frame._tag === "TerminalData") write(frame.data, frame.sequence);
       else {
+        hasExited = true;
         isRunningRef.current = false;
         setIsRunning(false);
         notifyExit(frame.exitCode ?? null);
@@ -199,12 +190,13 @@ export function TerminalPanel({
       .request({ _tag: "OpenTerminal", cwd, id })
       .then((session) => {
         if (!isActive) return;
+        const isSessionRunning = session.isRunning && !hasExited;
         folder.current = session.cwd;
-        isRunningRef.current = session.isRunning;
-        setIsRunning(session.isRunning);
-        if (!session.isRunning) {
+        isRunningRef.current = isSessionRunning;
+        setIsRunning(isSessionRunning);
+        if (!isSessionRunning) {
           // A queued command from a Run button restarts a previously exited shell once so it executes immediately.
-          if (tryAutoRestart(session.isRunning)) return;
+          if (tryAutoRestart(false)) return;
           notifyExit(session.exitCode ?? null);
         }
         sequence = session.sequence;
@@ -223,7 +215,11 @@ export function TerminalPanel({
         observer.observe(element);
         terminal.focus();
       })
-      .catch(onError);
+      .catch((reason) => {
+        if (!isActive) return;
+        hasOpenFailedRef.current = true;
+        onError(reason);
+      });
     return () => {
       isActive = false;
       isReady.current = false;

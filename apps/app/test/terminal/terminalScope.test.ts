@@ -80,6 +80,13 @@ describe("running a command in the conversation terminal", () => {
     expect(nextTerminalRunActionOf({ isReady: true, isRunning: false })).toBe("restart");
   });
 
+  it("retries opening when a prior OpenTerminal attempt failed", () => {
+    expect(nextTerminalRunActionOf({ hasOpenFailed: true, isReady: false, isRunning: true })).toBe("reopen");
+    expect(nextTerminalRunActionOf({ hasOpenFailed: true, isReady: false, isRestarting: true, isRunning: true })).toBe(
+      "queue",
+    );
+  });
+
   it("queues the command while the shell is still opening or already restarting", () => {
     expect(nextTerminalRunActionOf({ isReady: false, isRunning: true })).toBe("queue");
     expect(nextTerminalRunActionOf({ isReady: false, isRunning: false })).toBe("queue");

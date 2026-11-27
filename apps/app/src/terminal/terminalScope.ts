@@ -41,13 +41,16 @@ export const commandTerminalStatusOf = (
 /** Formats a runnable shell block for direct PTY submission using carriage returns. */
 export const terminalCommandInputOf = (command: string) => `${command.replace(/\r?\n/g, "\r")}\r`;
 
-/** Decides whether a command sent to the conversation terminal writes now, restarts an exited shell, or waits for open. */
+/** Decides whether a command sent to the conversation terminal writes now, restarts an exited shell, retries a failed open, or waits for open. */
 export const nextTerminalRunActionOf = (state: {
+  readonly hasOpenFailed?: boolean;
   readonly isReady: boolean;
   readonly isRestarting?: boolean;
   readonly isRunning: boolean;
-}): "queue" | "restart" | "write" => {
-  if (state.isRestarting || !state.isReady) return "queue";
+}): "queue" | "reopen" | "restart" | "write" => {
+  if (state.isRestarting) return "queue";
+  if (state.hasOpenFailed) return "reopen";
+  if (!state.isReady) return "queue";
   return state.isRunning ? "write" : "restart";
 };
 
