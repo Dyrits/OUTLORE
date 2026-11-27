@@ -1,6 +1,6 @@
 import type { Tier, TierName } from "@outlore/contracts";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { workshopDraft } from "./workshopDraft";
+import { workshopDraft, workshopKept } from "./workshopDraft";
 
 /** A built-in tier or a custom preset keyed by name. */
 export type WorkshopPreset = TierName | `custom:${string}`;
@@ -12,6 +12,8 @@ export type WorkshopFocus = "Default" | WorkshopPreset;
 export const customFocusOf = (name: string): WorkshopPreset => `custom:${name}`;
 
 type WorkshopTabs = {
+  /** Drops the Workshop's unsaved draft preset and kept chain drafts, as when the tab or narrow overlay closes. */
+  clearDrafts: () => void;
   /** Closes the Companions tab, from whichever of the page's tables it was opened by. */
   closeTab: () => void;
   focus: WorkshopFocus;
@@ -32,6 +34,7 @@ type WorkshopTabs = {
 };
 
 const WorkshopTabsContext = createContext<WorkshopTabs>({
+  clearDrafts: () => {},
   closeTab: () => {},
   focus: "Default",
   isOpen: false,
@@ -69,20 +72,25 @@ export function WorkshopTabsProvider({ children }: { children: ReactNode }) {
     presses.current.delete(at);
     setIsOpen([...presses.current.values()].some((entry) => entry.isOpen));
   }, []);
-  const closeTab = useCallback(() => {
-    // A draft is the tab's own: closing the tab throws it away.
+  const clearDrafts = useCallback(() => {
+    // A draft is the tab's own: closing the tab or overlay throws it away.
     workshopDraft.set(null);
-    [...presses.current.values()].find((entry) => entry.isOpen)?.press();
+    workshopKept.set(() => ({}));
   }, []);
+  const closeTab = useCallback(() => {
+    clearDrafts();
+    [...presses.current.values()].find((entry) => entry.isOpen)?.press();
+  }, [clearDrafts]);
   const revealed = useCallback((at: WorkshopFocus) => setRevealing((now) => (now === at ? null : now)), []);
   const startDraft = useCallback((stack: Tier, at: WorkshopFocus) => {
     workshopDraft.set(stack);
     setRevealing(at);
   }, []);
   // Leaving the Workshop drops a draft that was never saved.
-  useEffect(() => () => workshopDraft.set(null), []);
+  useEffect(() => clearDrafts, [clearDrafts]);
   const value = useMemo(
     () => ({
+      clearDrafts,
       closeTab,
       focus,
       isOpen,
@@ -94,7 +102,7 @@ export function WorkshopTabsProvider({ children }: { children: ReactNode }) {
       startDraft,
       unregister,
     }),
-    [closeTab, focus, isOpen, lastPreset, report, revealed, revealing, setFocus, startDraft, unregister],
+    [clearDrafts, closeTab, focus, isOpen, lastPreset, report, revealed, revealing, setFocus, startDraft, unregister],
   );
   return <WorkshopTabsContext.Provider value={value}>{children}</WorkshopTabsContext.Provider>;
 }

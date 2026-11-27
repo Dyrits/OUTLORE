@@ -8,7 +8,7 @@ import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts } from "../foundation/theme";
 import { Row } from "../quests/questPanel";
 import { CompanionTable } from "./companionTable";
-import { AddPreset, PresetActions } from "./presetActions";
+import { AddPreset } from "./presetActions";
 import { SettingsCard } from "./settingsParts";
 import { tierNameOf, tierNames } from "./tierNames";
 
@@ -71,7 +71,6 @@ function PresetRow({
         }
         runner={tier ?? defaults}
       />
-      {tier !== null && <PresetActions client={client} key={displayName} name={displayName} />}
     </View>
   );
 }
@@ -140,7 +139,6 @@ export function PresetsCard({
             rows={<PresetStackRows harnesses={harnesses} stack={stack} />}
             runner={stack}
           />
-          <PresetActions client={client} name={name} />
         </View>
       ))}
       <AddPreset

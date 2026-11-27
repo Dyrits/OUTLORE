@@ -113,7 +113,7 @@ describe("the presets of the Companions tab", () => {
     expect(markup).not.toContain(">Edit<");
   });
 
-  it("titles edit mode with the preset's name and a Done button, over the preset's own folds", () => {
+  it("titles edit mode with the preset's name", () => {
     const markup = renderToStaticMarkup(
       createElement(PresetEditor, {
         harnesses: null,
@@ -125,6 +125,9 @@ describe("the presets of the Companions tab", () => {
     );
     expect(markup).toContain("Editing Heavy");
     expect(markup).toContain(">Done<");
-    expect(markup).toContain("Backup companions");
+    expect(markup).toContain(">Primary<");
+    expect(markup).toContain(">Order 2<");
+    expect(markup).toContain("Nothing changed yet.");
+    expect(markup).not.toContain("Overwrite “Heavy”");
   });
 });

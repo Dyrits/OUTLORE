@@ -1,9 +1,20 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 // These tests start real processes and wait on real time, so they fail when the machine is busy: they run one file at a time, apart from the rest.
 const timing = ["packages/service/test/harness/**/*.test.ts", "packages/service/test/lore/**/*.test.ts"];
 
 export default defineConfig({
+  // A screen renders in a test as web markup: react-native is react-native-web, and the vector drawing renders nothing.
+  resolve: {
+    alias: [
+      {
+        find: "react-native-svg",
+        replacement: fileURLToPath(new URL("apps/app/test/fixtures/svgStandIn.ts", import.meta.url)),
+      },
+      { find: /^react-native$/, replacement: "react-native-web" },
+    ],
+  },
   test: {
     projects: [
       {

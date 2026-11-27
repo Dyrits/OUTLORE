@@ -33,6 +33,7 @@ export function RunnerPickers({
   isPanel = false,
   isTabOpen = false,
   onChange,
+  onDismiss,
   onOpenTab,
   panel,
   presetChoice,
@@ -58,6 +59,8 @@ export function RunnerPickers({
   isFullPanel?: boolean;
   /** Whether the pane's Companions tab is shown, so the runner button is selected. */
   isTabOpen?: boolean;
+  /** Runs when the narrow overlay closes by its button, backdrop, or native dismiss. */
+  onDismiss?: (() => void) | undefined;
   onOpenTab?: (() => void) | undefined;
   onChange: (runner: Runner) => void;
   /** The Companions tab's own content in place of its folds; see `CompanionPickerProps`. */
@@ -127,6 +130,7 @@ export function RunnerPickers({
       <CompanionPicker
         {...(dockRank === undefined ? {} : { rank: dockRank })}
         isTabOpen={isTabOpen}
+        onDismiss={onDismiss}
         onOpenTab={onOpenTab}
         {...(trigger === undefined ? {} : { trigger })}
         {...content}

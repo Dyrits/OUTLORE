@@ -108,12 +108,16 @@ export function OpenThreadForm({
           ? null
           : {
               backups: backups ?? parentPanel?.backups ?? null,
+              onDeletePreset: (name) =>
+                client.request({ _tag: "ChangeCompanionPreset", edit: { _tag: "Delete", name } }),
               onOverwritePreset: (name, stack) =>
                 client.request({ _tag: "ChangeCompanionPreset", edit: { _tag: "SetStack", name, stack } }),
               onPreset: (preset) => {
                 setRunner(preset.runner);
                 setBackups(preset.backups);
               },
+              onRenamePreset: (name, nextName) =>
+                client.request({ _tag: "ChangeCompanionPreset", edit: { _tag: "Rename", name, nextName } }),
               onSavePreset: (name, stack) =>
                 client.request({ _tag: "ChangeCompanionPreset", edit: { _tag: "Add", name, stack } }),
               presets: presetsOf(settings.tiers, settings.companionPresets),

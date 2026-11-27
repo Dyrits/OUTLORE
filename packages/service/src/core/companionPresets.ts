@@ -22,6 +22,8 @@ export const changeCompanionPreset = Effect.fnUntraced(function* (edit: Companio
     const name = (edit._tag === "Add" ? edit.name : edit.nextName).trim();
     if (name.length === 0) return yield* invalid("Enter a preset name.");
     const key = nameKeyOf(name);
+    // `Default` names the Workshop's synthetic default Companion row.
+    if (key === nameKeyOf("Default")) return yield* invalid("Default is reserved. Choose another name.");
     // Reserve the built-in names so an unset tier can always be set again.
     const owner = edit._tag === "Rename" ? tier : undefined;
     const isTaken =

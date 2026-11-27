@@ -1,20 +1,18 @@
-import { type ReactElement, useContext, useEffect, useId, useState } from "react";
+import { type ReactElement, useContext, useEffect, useId, useRef, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { CompanionPickerProps } from "../foundation/companionPickerProps";
-import { effortName, modelLabelOf, runnerSummaryOf } from "../foundation/formatting";
+import { effortName, modelLabelOf } from "../foundation/formatting";
 import { CompanionDockActions, CompanionTabOf } from "../foundation/shellContext";
 import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts } from "../foundation/theme";
-import { Button } from "../ui/button";
-import { Fold, FoldGroup } from "../ui/fold";
+import { FoldGroup } from "../ui/fold";
 import { ProviderMark } from "../ui/providerMarks";
-import { CompanionBody } from "./companionBody";
 import { PresetChooser } from "./presetChooser";
-import { DetailsHeader, PresetEditor } from "./presetEditor";
-import { customHint, customName, detailsModeOf, entriesOf, navWidth, panelLayoutOf, splitGap } from "./presetEntries";
-import { PresetNameForm } from "./presetNameForm";
-import { PresetOverwrite } from "./presetOverwrite";
+import { detailsModeOf, entriesOf, navWidth, panelLayoutOf, splitGap } from "./presetEntries";
 import { presetChangeOf } from "./presets";
+import { ThreadCompanionDetails } from "./threadCompanionDetails";
+import { ThreadPresetEditor } from "./threadPresetEditor";
+import { type KeptDrafts, keptRenamed, keptWith, keptWithout, liveDraftsOf, ownValue } from "./useDraftStack";
 
 /** The width of the picker's panel in a window with no right-hand column to hold it: a mini sidebar. */
 const miniWidth = 288;
@@ -33,8 +31,16 @@ export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { o
   const backups = presetChoice?.backups;
   // The preset last chosen in this tab: what a changed Companion can be written back to.
   const [basedOn, setBasedOn] = useState<string | null>(null);
-  // The preset in edit mode, by name.
+  // The preset in edit mode, by name; `editSession` invalidates late async completions after navigation.
   const [editing, setEditing] = useState<string | null>(null);
+  const editSession = useRef(0);
+  const changeEditing = (next: string | null, session?: number) => {
+    if (session !== undefined && editSession.current !== session) return;
+    editSession.current += 1;
+    setEditing(next);
+  };
+  // Each preset's unsaved chain from edit mode, kept until it is saved or discarded and shown in the list at once.
+  const [kept, setKept] = useState<KeptDrafts>({});
   const [width, setWidth] = useState<number | null>(null);
   const layout = panelLayoutOf(width);
   const stack =
@@ -47,6 +53,10 @@ export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { o
   const isCustomStack = entries.some((entry) => entry.kind === "custom");
   const overwritten = presets.find((preset) => preset.name === basedOn);
   const details = detailsModeOf(presets, editing);
+  const drafts = liveDraftsOf(kept, (name) => {
+    const found = presets.find((preset) => preset.name === name);
+    return found === undefined ? null : presetChangeOf(found);
+  });
   const isSplit = layout === "split";
   return (
     <FoldGroup initial="main">
@@ -68,75 +78,68 @@ export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { o
               {presetChoice !== null && entries.length > 0 && (
                 <View style={isSplit && local.nav}>
                   <PresetChooser
+                    drafts={drafts}
+                    editing={details.mode === "edit" ? details.preset.name : null}
                     entries={entries}
                     harnesses={props.harnesses}
+                    isChainListed={true}
                     isNav={isSplit}
                     onPreset={(preset) => {
                       setBasedOn(preset.name);
                       // Choosing a preset is a handover of the thread, which ends the edit of a preset.
-                      setEditing(null);
+                      changeEditing(null);
                       presetChoice.onPreset(preset);
                     }}
                   />
                 </View>
               )}
               <View style={[local.details, isSplit && entries.length > 0 && local.detailsSplit]}>
-                {details.mode === "edit" && onOverwritePreset !== undefined ? (
-                  <PresetEditor
+                {details.mode === "edit" && presetChoice !== null && onOverwritePreset !== undefined ? (
+                  <ThreadPresetEditor
+                    choice={{
+                      ...presetChoice,
+                      ...(presetChoice.onRenamePreset === undefined
+                        ? {}
+                        : {
+                            onRenamePreset: async (from: string, to: string) => {
+                              await presetChoice.onRenamePreset?.(from, to);
+                              setKept((current) => keptRenamed(current, from, to));
+                            },
+                          }),
+                      ...(presetChoice.onDeletePreset === undefined
+                        ? {}
+                        : {
+                            onDeletePreset: async (name: string) => {
+                              await presetChoice.onDeletePreset?.(name);
+                              setKept((current) => keptWithout(current, name));
+                            },
+                          }),
+                    }}
+                    editSession={editSession.current}
                     harnesses={props.harnesses}
+                    initial={ownValue(drafts, details.preset.name)}
                     key={details.preset.name}
-                    name={details.preset.name}
-                    onDone={() => setEditing(null)}
-                    onSave={(next) => onOverwritePreset(details.preset.name, next)}
-                    stack={presetChangeOf(details.preset)}
+                    onDraft={(next) =>
+                      setKept((current) => keptWith(current, details.preset.name, presetChangeOf(details.preset), next))
+                    }
+                    onEditing={changeEditing}
+                    onOverwrite={onOverwritePreset}
+                    preset={details.preset}
                   />
                 ) : (
-                  <>
-                    {entries.length > 0 && stack !== null && (
-                      <DetailsHeader
-                        action={
-                          chosen?.kind === "preset" && onOverwritePreset !== undefined ? (
-                            <Button isPrimary={false} label="Edit" onPress={() => setEditing(chosen.preset.name)} />
-                          ) : null
-                        }
-                        title={chosen?.kind === "preset" ? chosen.preset.name : `${customName}, ${customHint}`}
-                      />
-                    )}
-                    <Fold
-                      harness={props.harness}
-                      id="main"
-                      summary={runnerSummaryOf(props.harnesses, props)}
-                      title="Companion"
-                    >
-                      <CompanionBody {...picker} />
-                    </Fold>
-                    {extra}
-                    {onOverwritePreset !== undefined &&
-                      stack !== null &&
-                      isCustomStack &&
-                      overwritten !== undefined && (
-                        <PresetOverwrite
-                          key={overwritten.name}
-                          name={overwritten.name}
-                          onOverwrite={() => onOverwritePreset(overwritten.name, stack)}
-                        />
-                      )}
-                    {onSavePreset !== undefined && backups != null && (
-                      <PresetNameForm
-                        key={extra?.key}
-                        label="Save as a preset"
-                        onSave={(name) =>
-                          onSavePreset(name, {
-                            accountId: props.accountId,
-                            backups,
-                            effort: props.effort,
-                            harness: props.harness,
-                            model: props.model,
-                          })
-                        }
-                      />
-                    )}
-                  </>
+                  <ThreadCompanionDetails
+                    backups={backups}
+                    chosen={chosen}
+                    entriesCount={entries.length}
+                    extra={extra}
+                    isCustomStack={isCustomStack}
+                    onEdit={changeEditing}
+                    onOverwritePreset={onOverwritePreset}
+                    onSavePreset={onSavePreset}
+                    overwritten={overwritten}
+                    picker={picker}
+                    stack={stack}
+                  />
                 )}
               </View>
             </>
@@ -154,6 +157,7 @@ export function CompanionPanel({ onClose, ...props }: CompanionPickerProps & { o
  */
 export function CompanionPicker({
   isTabOpen = false,
+  onDismiss,
   onOpenTab,
   rank = 0,
   trigger,
@@ -161,6 +165,8 @@ export function CompanionPicker({
 }: CompanionPickerProps & {
   /** Whether the composer's own pane shows the Companions tab; the button is then selected, and pressing it leaves. */
   isTabOpen?: boolean;
+  /** Runs when the narrow overlay is closed by its button, backdrop, or native dismiss. */
+  onDismiss?: (() => void) | undefined;
   /** Opens the Companions tab in the composer’s own pane, or leaves it when it is shown. */
   onOpenTab?: (() => void) | undefined;
   rank?: number;
@@ -185,6 +191,10 @@ export function CompanionPicker({
     harnesses?.harnesses.find((candidate) => candidate.name === harness)?.models,
   );
   const press = onOpenTab ?? (() => (dock === null ? setIsOverlayOpen(!isOverlayOpen) : dock.open(id)));
+  const closeOverlay = () => {
+    setIsOverlayOpen(false);
+    onDismiss?.();
+  };
   return (
     <View style={[styles.menu, trigger !== undefined && local.triggerFrame]}>
       {trigger === undefined ? (
@@ -206,14 +216,10 @@ export function CompanionPicker({
         trigger({ isOpen, onPress: press })
       )}
       {dock === null && onOpenTab === undefined && (
-        <Modal animationType="none" onRequestClose={() => setIsOverlayOpen(false)} transparent visible={isOverlayOpen}>
-          <Pressable
-            accessibilityLabel="Close the menu"
-            onPress={() => setIsOverlayOpen(false)}
-            style={StyleSheet.absoluteFill}
-          />
+        <Modal animationType="none" onRequestClose={closeOverlay} transparent visible={isOverlayOpen}>
+          <Pressable accessibilityLabel="Close the menu" onPress={closeOverlay} style={StyleSheet.absoluteFill} />
           <View style={local.overlay}>
-            <CompanionPanel {...props} onClose={() => setIsOverlayOpen(false)} />
+            <CompanionPanel {...props} onClose={closeOverlay} />
           </View>
         </Modal>
       )}
