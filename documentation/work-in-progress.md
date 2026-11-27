@@ -1,5 +1,10 @@
 # Work in progress
 
+## Connector access diagnosis · 2026-11-27 · diagnosed and documented; fixes not built
+
+No CHG number (debug only, nothing changed): a thread receives no connector tools although the owner connected them, and each of the four installed connectors is unusable for its own reason — composio was never given its API key; gitlab's stored PAT is refused by the hardcoded `https://gitlab.com/api/v4/mcp` (the owner's GitLab is self-hosted); github's PAT is stored and Ready but its sessionless `tools/list` fails silently (class `Failed`: no thread warning, no mark, empty cache), so it offers no tools; atlassian's browser sign-in stored no session under the pre-CHG-0785 app. The full claims, live evidence and reproduction commands are in [the diagnosis](verification/2026-11-27-connector-access-diagnosis.md), the session state in [the handoff](../.agents/handoffs/2026-11-27-1431-connector-access-diagnosis.md).
+Next: retry the Atlassian sign-in in the running window (the exact error now stays visible, CHG-0785's pending live check), then build the fixes: the silent `Failed` listing gap (open item 3 of the 2026-11-26 diagnosis), self-hosted GitLab support, and the owner's Composio key.
+
 ## Companions tab: split layout, Custom entry, preset edit mode · 2026-11-27 · built and tested; window and phone not looked at
 
 CHG-0789 in `0.2.12-Pre-Alpha` (branch `mission/companion-presets-layout-b209a070`): the Companions tab of a quest or errand measures its own width and splits at `splitLeastWidth` (480): the preset list (plus the Custom entry) stands at the left (`navWidth` 176) and the thread's Companion details at the right; narrower, the sections stack as before. A stack that no preset holds selects the **Custom** entry ("not saved yet"); Save as a preset and Overwrite persist it. **Edit** on a selected preset swaps the details for the preset's own editors (`presetEditor.tsx`), saving each change to the preset at once through the same `SetStack` request as the Workshop, never touching the thread's Companion; a thread that was on the preset then shows Custom with its old stack and rejoins by pressing its row.
