@@ -91,7 +91,6 @@ export function WorkshopCompanions({
   const entries: ReadonlyArray<PresetEntry> = rows.map((row) => ({
     id: row.focus,
     isChosen: !isDraft && row.focus === selected,
-    kind: "preset",
     preset: { backups: row.stack?.backups ?? [], name: row.name, runner: row.stack ?? defaults },
   }));
   const notes = Object.fromEntries(
@@ -107,28 +106,15 @@ export function WorkshopCompanions({
           drafts={drafts}
           entries={entries}
           harnesses={harnesses}
+          isAdding={isDraft}
           isChainListed={true}
-          isNav={isSplit}
           notes={notes}
+          onAdd={() => workshopDraft.set(draftSeedOf({ defaultStack, defaults, drafts, selected, stack }))}
           onPreset={(_chosen, id) => {
             const row = rows.find((candidate) => candidate.focus === id);
             if (row !== undefined) onFocus(row.focus);
           }}
         />
-        {isDraft ? (
-          <View style={[companionStyles.customRow, companionStyles.tabActive]}>
-            <Text style={[companionStyles.customName, companionStyles.tabTextActive]}>New preset</Text>
-            <Text style={companionStyles.customSummary}>Not saved yet</Text>
-          </View>
-        ) : (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => workshopDraft.set(draftSeedOf({ defaultStack, defaults, drafts, selected, stack }))}
-            style={companionStyles.customRow}
-          >
-            <Text style={styles.link}>+ Add preset</Text>
-          </Pressable>
-        )}
       </View>
       <View style={companionStyles.details}>
         {draft !== null ? (

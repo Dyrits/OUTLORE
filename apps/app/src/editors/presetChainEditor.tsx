@@ -14,8 +14,10 @@ import type { Runner } from "./runner";
 import { useDraftStack } from "./useDraftStack";
 
 /**
- * A preset's whole stack as one ordered chain of rows, the first the Primary Companion: each row is named by its model, account, and effort, unfolds to the pickers, and moves by its grip or its arrows.
- * Changes stay in a draft until Overwrite sends the whole stack to `onSave`; Discard puts the saved stack back; leaving without either keeps the draft with the caller. The Workshop and a thread's Companions tab both draw it, so a preset is edited one way everywhere (companion-presets, Agreed behavior).
+ * A companion's whole stack as one ordered chain of collapsible rows, the first marked Primary: each row is named by
+ * its model, account, and effort, unfolds to the pickers, and moves by its grip or its arrows.
+ * Changes stay in a draft until Overwrite sends the whole stack to `onSave`; Discard puts the saved stack back;
+ * leaving without either keeps the draft with the caller.
  */
 export function PresetChainEditor({
   client,
@@ -35,21 +37,21 @@ export function PresetChainEditor({
   harnesses: HarnessList | null;
   /** A draft kept from before, which the editor starts on while the saved stack is still the one it began from. */
   initial?: Tier | null;
-  /** Whether the stack is a preset not made yet: it can only be saved under a name or discarded. */
+  /** Whether the stack is a companion not saved yet: it can only be saved under a name or discarded. */
   isNew?: boolean;
   /** Whether the primary row can choose its account; the Workshop's Default primary has none, while its backups still can. */
   isPrimaryAccountShown?: boolean;
-  /** Whether an earlier save of this preset is still pending across a remount, keeping the editor locked until it settles. */
+  /** Whether an earlier save of this companion is still pending across a remount, keeping the editor locked until it settles. */
   isSaving?: boolean;
-  /** What the preset is called, for the Overwrite question. */
+  /** What the companion is called, for the Overwrite button and question. */
   name: string;
-  /** What Discard does for a new preset, which has no saved stack to go back to. */
+  /** What Discard does for a new companion, which has no saved stack to go back to. */
   onDiscard?: () => void;
-  /** Tells the list of presets about the draft as it changes, so it can show it unsaved; null once it is saved or discarded. */
+  /** Tells the list about the draft as it changes, so it can preview it unsaved; null once it is saved or discarded. */
   onDraft?: (stack: Tier | null) => void;
-  /** Replaces the saved stack with the whole draft. */
-  onSave: (stack: Tier) => Promise<unknown>;
-  /** Saves the draft as a new preset under a name. */
+  /** Replaces the saved stack with the whole draft; omitted when the caller cannot overwrite a preset. */
+  onSave?: (stack: Tier) => Promise<unknown>;
+  /** Saves the draft as a new companion under a name. */
   onSaveAs?: (name: string, stack: Tier) => Promise<unknown>;
   stack: Tier;
 }) {
@@ -82,10 +84,23 @@ export function PresetChainEditor({
       setIsLocalSaving(false);
     }
   };
-  const footer = footerOf({ canSaveAs: onSaveAs !== undefined, isChanged, isNew });
+  const footer = footerOf({
+    canOverwrite: onSave !== undefined,
+    canSaveAs: onSaveAs !== undefined,
+    isChanged,
+    isNew,
+  });
+  const isActionDisabled = isSaving || !footer.isDirty;
   return (
-    <FoldGroup initial="chain-0">
+    <FoldGroup initial={null}>
       <View style={local.body}>
+        <View style={local.sectionHeader}>
+          <Text style={local.sectionLabel}>FALLBACK ORDER</Text>
+          <Text style={local.helper}>
+            The first model is tried first. When a turn fails, the next one that differs takes over. Drag a row by its
+            handle to reorder.
+          </Text>
+        </View>
         <ChainRows
           chain={chain}
           client={client}
@@ -95,24 +110,13 @@ export function PresetChainEditor({
           onChange={change}
         />
         <View style={local.footer}>
-          <Text style={local.status}>{footer.status}</Text>
-          {footer.hasControls && (
-            <>
-              {footer.canOverwrite && (
-                <PresetOverwrite
-                  isDisabled={isSaving}
-                  name={name}
-                  onOverwrite={() =>
-                    runSave(async () => {
-                      await onSave(shown);
-                      onDraft?.(null);
-                    })
-                  }
-                />
-              )}
+          <View style={local.footerRow}>
+            <Text style={local.status}>{footer.status}</Text>
+            <View style={local.footerActions}>
+              <Button isDisabled={isActionDisabled} isPrimary={false} label="Discard" onPress={discardDraft} />
               {onSaveAs !== undefined && footer.canSaveAs && (
                 <PresetNameForm
-                  isDisabled={isSaving}
+                  isDisabled={isActionDisabled}
                   label="Save as new"
                   onSave={(nextName) =>
                     runSave(async () => {
@@ -124,8 +128,22 @@ export function PresetChainEditor({
                   }
                 />
               )}
-              <Button isDisabled={isSaving} isPrimary={false} label="Discard" onPress={discardDraft} />
-            </>
+            </View>
+          </View>
+          {footer.canOverwrite && onSave !== undefined && (
+            <View style={local.overwriteRow}>
+              <PresetOverwrite
+                isDisabled={isActionDisabled}
+                isPrimary={true}
+                name={name}
+                onOverwrite={() =>
+                  runSave(async () => {
+                    await onSave(shown);
+                    onDraft?.(null);
+                  })
+                }
+              />
+            </View>
           )}
         </View>
       </View>
@@ -134,7 +152,25 @@ export function PresetChainEditor({
 }
 
 const local = StyleSheet.create({
-  body: { gap: 10 },
-  footer: { gap: 8 },
+  body: { gap: 12 },
+  footer: { borderColor: colors.border, borderTopWidth: 1, gap: 10, paddingTop: 12 },
+  footerActions: { alignItems: "center", flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  footerRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    justifyContent: "space-between",
+  },
+  helper: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm, lineHeight: 18 },
+  overwriteRow: { alignItems: "flex-start" },
+  sectionHeader: { gap: 4 },
+  sectionLabel: {
+    color: colors.textMuted,
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.xs,
+    fontWeight: "600",
+    letterSpacing: 0.6,
+  },
   status: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
 });

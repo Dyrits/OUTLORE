@@ -6,6 +6,7 @@ import { styles } from "../foundation/styles";
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { Fold, useOpenFold } from "../ui/fold";
 import { SortableItem } from "../ui/sortable";
+import { chainLabelOf } from "./presetChain";
 import { RunnerPickers } from "./runners";
 
 /** A bin: removes a backup. A line drawing in the sidebar's style, in the danger color. */
@@ -115,7 +116,7 @@ export function BackupsEditor({
                 harness={backup.harness}
                 id={`backup-${index}`}
                 summary={runnerSummaryOf(harnesses, backup)}
-                title={`Backup ${index + 1}`}
+                title={chainLabelOf(harnesses, backup)}
               >
                 {controls(index)}
                 <RunnerPickers

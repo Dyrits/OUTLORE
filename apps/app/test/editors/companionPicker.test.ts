@@ -30,7 +30,7 @@ describe("the compact Companion picker in a composer", () => {
 });
 
 describe("saving the current Companion stack", () => {
-  it("offers Save as a preset even when the library is empty", () => {
+  it("offers Save as new even when the library is empty", () => {
     const markup = renderToStaticMarkup(
       createElement(CompanionPanel, {
         accountId: null,
@@ -45,11 +45,12 @@ describe("saving the current Companion stack", () => {
         presetChoice: { backups: [], onPreset: () => {}, onSavePreset: async () => {}, presets: [] },
       }),
     );
-    expect(markup).toContain("Save as a preset");
+    expect(markup).toContain("Save as new");
+    expect(markup).toContain("+ Add a companion");
   });
 });
 
-describe("the presets of the Companions tab", () => {
+describe("the companions of the Companions tab", () => {
   const codex = { accountId: null, effort: "default", harness: "codex", model: "gpt-5" } as const;
   const heavy = {
     backups: [codex],
@@ -78,56 +79,44 @@ describe("the presets of the Companions tab", () => {
       }),
     );
 
-  it("shows a Custom entry, marked and not saved yet, when the stack matches no preset", () => {
+  it("shows no Custom entry and no Presets header when the stack matches no preset", () => {
     const markup = panel([codex], "claude-sonnet-5-5");
-    expect(markup).toContain("Custom");
-    expect(markup).toContain("not saved yet");
-    expect(markup).not.toContain(">Edit<");
+    expect(markup).not.toContain(">Custom<");
+    expect(markup).not.toContain(">Presets<");
+    expect(markup).toContain("Current companion");
+    expect(markup).toContain("Sonnet 5.5");
   });
 
-  it("shows no Custom entry, and offers Edit, when the stack is a preset's", () => {
+  it("shows the selected companion directly in the unified chain editor with model names", () => {
     const markup = panel([codex], "claude-opus-5-5");
-    expect(markup).not.toContain("not saved yet");
-    expect(markup).toContain(">Edit<");
-  });
-
-  it("shows no Custom entry while the backups are unread", () => {
-    expect(panel(null, "claude-sonnet-5-5")).not.toContain("not saved yet");
-  });
-
-  it("offers no Edit when the tab cannot save a preset", () => {
-    const markup = renderToStaticMarkup(
-      createElement(CompanionPanel, {
-        accountId: null,
-        effort: "default",
-        effortOptions: ["default"],
-        harness: "claude",
-        harnesses: null,
-        isAccountShown: true,
-        model: "claude-opus-5-5",
-        onEffort: () => {},
-        onModel: () => {},
-        presetChoice: { backups: [codex], onPreset: () => {}, presets: [heavy] },
-      }),
-    );
+    expect(markup).toContain("Heavy");
+    expect(markup).toContain("Opus 5.5");
+    expect(markup).toContain("GPT-5");
+    expect(markup).toContain("Primary");
+    expect(markup).not.toContain("Backup 1");
     expect(markup).not.toContain(">Edit<");
   });
 
-  it("titles edit mode with the preset's name", () => {
+  it("shows the model name rather than Companion while backups are unread", () => {
+    const markup = panel(null, "claude-sonnet-5-5");
+    expect(markup).toContain("Sonnet 5.5");
+    expect(markup).not.toContain(">Companion<");
+  });
+
+  it("titles the editor card with the companion's name and shows fallback order", () => {
     const markup = renderToStaticMarkup(
       createElement(PresetEditor, {
         harnesses: null,
         name: "Heavy",
-        onDone: () => {},
         onSave: async () => {},
         stack: { ...heavy.runner, backups: heavy.backups },
       }),
     );
-    expect(markup).toContain("Editing Heavy");
-    expect(markup).toContain(">Done<");
+    expect(markup).toContain("Heavy");
+    expect(markup).toContain("FALLBACK ORDER");
     expect(markup).toContain(">Primary<");
-    expect(markup).toContain(">Order 2<");
+    expect(markup).toContain("Opus 5.5");
+    expect(markup).toContain("GPT-5");
     expect(markup).toContain("Nothing changed yet.");
-    expect(markup).not.toContain("Overwrite “Heavy”");
   });
 });
