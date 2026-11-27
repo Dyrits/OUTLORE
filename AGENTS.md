@@ -61,8 +61,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the composer's send and stop buttons, now filled with the accent so they read in every theme (built, no screen seen yet), read the [current handoff](.agents/handoffs/2026-11-27-0045-composer-send-button-visibility.md). Handoffs are shared and committed.
+- To resume a new quest renaming itself after its first message (CHG-0776: built and tested, committed only after the owner's choice of scope, live harness turn not yet checked), read the [current handoff](.agents/handoffs/2026-11-27-0030-rename-quest-after-first-message.md). Handoffs are shared and committed.
 
-- To resume the phone's growing floating bar, side menu and landing in the chat (refactored and `SPEC-01`–`SPEC-09` fixed; real-phone check `SPEC-10` pending; CHG-0773, which also changes Back), read the [current handoff](.agents/handoffs/2026-11-27-0033-phone-growing-bar.md). Handoffs are shared and committed.
+- To resume the composer's send and stop buttons, now filled with the accent so they read in every theme (built, no screen seen yet), read the [current handoff](.agents/handoffs/2026-11-27-0045-composer-send-button-visibility.md). Handoffs are shared and committed.
 
 - To resume the quest pane that opens on the tab the last quest showed (built and tested; desktop window check pending; CHG-0774), read the [current handoff](.agents/handoffs/2026-11-27-0039-quest-pane-remembers-tab.md). Handoffs are shared and committed.

@@ -55,13 +55,15 @@ export const toolListingOf = (hasPromptTool: boolean, phoneTools: ReadonlySet<st
 /**
  * The tools Code Mode never covers, which stay listed and are called directly (connectors specification, Code Mode):
  * the two that put a question to the owner, whose approval must be seen and never run from code (`answer_prompt` is how
- * Claude Code asks its own permission prompts), the one that ends the thread's turn, and the one that stops the thread
- * until the owner chooses where a message goes.
+ * Claude Code asks its own permission prompts), the one that ends the thread's turn, the one that stops the thread
+ * until the owner chooses where a message goes, and the one that names the thread, which a model must see in its listing
+ * to call it on its first turn (a quest stayed "Quest" while it was reachable only from code).
  */
 const directToolNames: ReadonlySet<string> = new Set([
   "answer_prompt",
   "report_result",
   "request_approval",
+  "set_mission_title",
   "suggest_mission",
 ] satisfies ReadonlyArray<ThreadToolName>);
 

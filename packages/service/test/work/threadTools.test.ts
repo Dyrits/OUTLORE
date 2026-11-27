@@ -72,11 +72,17 @@ describe("listing the thread tools", () => {
 
   // Code Mode runs the covered tools from code, where Claude Code's own prompt cannot ask first: only tools that already
   // run unasked, asking the owner in their own handler when they must, may be covered.
-  it("covers only tools that run unasked, and leaves the approval tools and the turn-ending tools direct", () => {
+  it("covers only tools that run unasked, and leaves the approval tools, the turn-ending tools and the naming tool direct", () => {
     const covered = Object.keys(threadTools).filter(isCoveredByCodeMode);
     expect(covered.filter((name) => !threadTools[name as ThreadToolName].isUnasked)).toEqual([]);
     const direct = Object.keys(threadTools).filter((name) => !isCoveredByCodeMode(name));
-    expect(direct.sort()).toEqual(["answer_prompt", "report_result", "request_approval", "suggest_mission"]);
+    expect(direct.sort()).toEqual([
+      "answer_prompt",
+      "report_result",
+      "request_approval",
+      "set_mission_title",
+      "suggest_mission",
+    ]);
   });
 
   it("counts only the tools that start or redirect other threads' work", () => {

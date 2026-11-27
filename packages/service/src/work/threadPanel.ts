@@ -10,7 +10,7 @@ import { readThreadConsumption } from "./consumption.ts";
 import { readLatestContextUsed } from "./contextReadings.ts";
 import type { PhoneLink } from "./phoneLink.ts";
 import { PlanLimits } from "./planLimits.ts";
-import { readSentContextSize } from "./startingContext.ts";
+import { readSentContextSize } from "./startingContextSizing.ts";
 import { toolListingOf } from "./threadTools.ts";
 import { readAuthorityHarness } from "./turnAdmission.ts";
 

@@ -186,7 +186,7 @@ _Avoid_: Plugin, integration, MCP server (the way a connector is delivered is a 
 **Code Mode**:
 An experimental global setting under **Workshop → Connectors**, off by default.
 When it is on, a thread can call connector and thread tools by running short pieces of code through `run_code`.
-Four thread tools and the harness's own tools stay directly callable (CHG-0324, CHG-0446, CHG-0447).
+Five thread tools and the harness's own tools stay directly callable (CHG-0324, CHG-0446, CHG-0447, CHG-0776).
 
 **The Vault**:
 Where the host keeps connectors' secrets, shown to the owner by connector, kind and date and never by value.

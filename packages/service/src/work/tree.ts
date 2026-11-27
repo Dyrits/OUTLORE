@@ -17,7 +17,7 @@ import { insertErrandReply, insertMessage, insertReply } from "./messaging.ts";
 import { ownCopyForChild } from "./ownCopies.ts";
 import { withThreadContext } from "./parentEcho.ts";
 import { copyOpeningToParent } from "./questOrigins.ts";
-import { readStartingContext, startingContextRefusalOf } from "./startingContext.ts";
+import { readStartingContext, startingContextRefusalOf } from "./startingContextSizing.ts";
 import { newErrandTitle, titleOf } from "./titles.ts";
 import { depthOf, maxRunning, runningCountOf } from "./treeLimits.ts";
 

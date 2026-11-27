@@ -20,7 +20,7 @@ import { moveQuest } from "./questMoves.ts";
 import { placeQuestOrigin } from "./questOrigins.ts";
 import { readThreadAnchors, replyToMessage } from "./replies.ts";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";
-import { readStartingContext } from "./startingContext.ts";
+import { readStartingContext } from "./startingContextSizing.ts";
 import { readThreadPanel } from "./threadPanel.ts";
 import { setThreadPermissionMode } from "./threadPermissionMode.ts";
 import { newQuestTitle, renameMission } from "./titles.ts";

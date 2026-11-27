@@ -1,30 +1,25 @@
 import { join } from "node:path";
-import type { HarnessName, ModelChoice, StartingContext } from "@outlore/contracts";
+import type { HarnessName } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { notFound, tokensOf } from "../core/index.ts";
 import {
   guildmasterInstructionsOf,
-  harnessFacts,
   positionLineOf,
   type ThreadPosition,
   threadInstructionsOf,
 } from "../harness/index.ts";
-import { loreContextOf, loreInstructions, readContextLimit } from "../lore/index.ts";
-import { readApprovalInstructions } from "./approvalTerms.ts";
+import { loreContextOf, loreInstructions } from "../lore/index.ts";
 import { accountOfThread, budgetLineOf } from "./budgetScopes.ts";
 import { readGuildmasterContext } from "./guildmasterContext.ts";
 import { journalContextOf, journalInstructions } from "./journal.ts";
-import { openerContextOf, openerMessagesOf, openerTailOf } from "./openerContext.ts";
+import { openerContextOf } from "./openerContext.ts";
 import { readOwnCopy } from "./ownCopies.ts";
-import { newErrandTitle } from "./titles.ts";
-import { prepareWorkingFolder, readThreadWorkspace, ScratchRoot, workingFolderOf } from "./workspaces.ts";
+import { namingLineOf } from "./titles.ts";
+import { prepareWorkingFolder, readThreadWorkspace, ScratchRoot } from "./workspaces.ts";
 
 // A thread's starting context (thread-tree, Opening a thread): the system part, the same every turn, and the note each turn's message carries.
 // A thread's turns and the warning before a thread opens read the same parts.
-
-/** The share of the context window in percent above which the owner is warned before a thread starts (thread-tree, Opening a thread; CHG-0007). */
-export const startingContextWarningPercent = 25;
 
 /** What one turn of a thread starts from: its system part, its note, and where it works. */
 export type TurnContext = {
@@ -37,7 +32,7 @@ export type TurnContext = {
 };
 
 /** A starting context by part, each the text the harness receives. */
-type Sections = {
+export type Sections = {
   readonly budget: string | null;
   readonly instructions: string;
   readonly journal: string;
@@ -48,11 +43,13 @@ type Sections = {
 };
 
 /** Whom a starting context is for: a thread, or one about to be opened. */
-type Subject = {
+export type Subject = {
   /** Whether it is a realm or Borderlands channel conversation. */
   readonly isChannel: boolean;
   /** Whether it is Chronicler's thread, which starts from the realms and the quest list, not a journal. */
   readonly isGuildmaster: boolean;
+  /** Whether the owner explicitly named the mission, which keeps the naming nudge off even if they chose "Quest". */
+  readonly isTitleByUser: boolean;
   /** The thread whose scope the lore comes from: the thread itself, or the opener of one about to be opened. */
   readonly loreThreadId: string;
   readonly missionId: string;
@@ -62,13 +59,11 @@ type Subject = {
   readonly position: ThreadPosition;
 };
 
-/** Stands in for the id of a thread about to be opened: every id has this length, so the size is the same. */
-const unopenedThreadId = "00000000-0000-0000-0000-000000000000";
-
 /** The tokens of a part that may be absent: none when it is. */
-const tokensOfPart = (part: string | null) => (part === null ? 0 : tokensOf(part));
+export const tokensOfPart = (part: string | null) => (part === null ? 0 : tokensOf(part));
 
-const readSections = Effect.fnUntraced(function* (subject: Subject, workspace: string) {
+/** Reads every text section of a thread's starting context. */
+export const readSections = Effect.fnUntraced(function* (subject: Subject, workspace: string) {
   return {
     budget: yield* budgetLineOf(subject.missionId, yield* accountOfThread(subject.position.threadId)),
     instructions: (subject.isGuildmaster
@@ -80,7 +75,7 @@ const readSections = Effect.fnUntraced(function* (subject: Subject, workspace: s
       : yield* journalContextOf(subject.missionId, { isBriefingOnly: subject.position.isAside }),
     lore: yield* loreContextOf(subject.loreThreadId),
     openerMessages: openerContextOf(subject.openerMessages, subject.openerTail),
-    position: positionLineOf(subject.position),
+    position: [positionLineOf(subject.position), namingLineOf(subject)].filter((line) => line !== null).join(" "),
     workspace,
   } satisfies Sections;
 });
@@ -95,7 +90,7 @@ const noteOf = (sections: Sections) =>
     .join("\n\n");
 
 /** Who a thread's turn context is for, and where it works. */
-const readThreadSubject = Effect.fnUntraced(function* (threadId: string) {
+export const readThreadSubject = Effect.fnUntraced(function* (threadId: string) {
   const sql = yield* SqlClient.SqlClient;
   const [row] = yield* sql<{
     harness: HarnessName;
@@ -103,6 +98,7 @@ const readThreadSubject = Effect.fnUntraced(function* (threadId: string) {
     isAside: number;
     isChannel: number;
     isGuildmaster: number;
+    isTitleByUser: number;
     missionId: string;
     openerMessages: string | null;
     openerTail: string | null;
@@ -112,7 +108,8 @@ const readThreadSubject = Effect.fnUntraced(function* (threadId: string) {
     turnCount: number;
   }>`
       SELECT t.mission_id AS missionId, t.harness, t.title, t.parent_id AS parentId, p.title AS parentTitle,
-        t.is_aside AS isAside, t.opener_messages AS openerMessages, t.opener_tail AS openerTail, m.is_guildmaster AS isGuildmaster,
+        t.is_aside AS isAside, t.opener_messages AS openerMessages, t.opener_tail AS openerTail,
+        m.is_guildmaster AS isGuildmaster, m.is_title_by_user AS isTitleByUser,
         (m.chronicler_channel IS NOT NULL) AS isChannel,
         (SELECT COUNT(*) FROM turns u WHERE u.thread_id = t.id) AS turnCount,
         (SELECT g.top_thread_id FROM missions g WHERE g.is_guildmaster = 1 AND g.chronicler_channel IS NULL LIMIT 1) AS guildmasterId
@@ -132,6 +129,7 @@ const readThreadSubject = Effect.fnUntraced(function* (threadId: string) {
     subject: {
       isChannel: row.isChannel === 1,
       isGuildmaster: row.isGuildmaster === 1,
+      isTitleByUser: row.isTitleByUser === 1,
       loreThreadId: threadId,
       missionId: row.missionId,
       openerMessages: row.openerMessages,
@@ -155,102 +153,4 @@ export const prepareStartingContext = Effect.fnUntraced(function* (threadId: str
     isInWorkspace: workspace !== null,
     note: noteOf(sections),
   } satisfies TurnContext;
-});
-
-/**
- * What a thread the owner opens beneath `parentId` with this request would start with, on the chosen harness (the parent's when null) and model.
- * It has the parent's workspace, the parent's messages since the latest journal entry, and no lore of its own yet, so its lore is the parent's.
- * Skills are not counted until tool-and-skill-loading gives them to threads; the thread tools' own descriptions are not counted either.
- */
-export const readStartingContext = Effect.fnUntraced(function* (
-  parentId: string,
-  choice: { readonly harness: HarnessName | null; readonly model: ModelChoice },
-  request: string,
-) {
-  const sql = yield* SqlClient.SqlClient;
-  const scratchRoot = yield* ScratchRoot;
-  const [parent] = yield* sql<{ harness: HarnessName; missionId: string; title: string }>`
-      SELECT harness, mission_id AS missionId, title FROM threads WHERE id = ${parentId}`;
-  if (parent === undefined) return yield* notFound("No such thread.");
-  const harness = choice.harness ?? parent.harness;
-  const workspace = yield* readThreadWorkspace(parentId);
-  const folder = yield* workingFolderOf(workspace, join(scratchRoot, parent.missionId), yield* readOwnCopy(parentId));
-  const sections = yield* readSections(
-    {
-      isChannel: false,
-      isGuildmaster: false,
-      loreThreadId: parentId,
-      missionId: parent.missionId,
-      openerMessages: yield* openerMessagesOf(parentId),
-      // The owner opens it, on its first turn: it would read its opener's latest messages as well.
-      openerTail: yield* openerTailOf(parentId),
-      position: {
-        isAside: false,
-        parent: { id: parentId, title: parent.title },
-        threadId: unopenedThreadId,
-        title: newErrandTitle,
-      },
-    },
-    folder.context,
-  );
-  const approvals = yield* readApprovalInstructions(parentId, harness);
-  const parts = {
-    budget: tokensOfPart(sections.budget),
-    instructions: tokensOf(sections.instructions) + tokensOf(approvals),
-    journal: tokensOf(sections.journal),
-    lore: tokensOf(sections.lore),
-    openerMessages: tokensOfPart(sections.openerMessages),
-    position: tokensOf(sections.position),
-    request: tokensOf(request),
-    workspace: tokensOf(sections.workspace),
-  };
-  const tokens = Object.values(parts).reduce((sum, part) => sum + part, 0);
-  // The harness's default model has no name: on the parent's own harness it is the model the parent's turns reported.
-  const { tokens: windowTokens } = yield* readContextLimit(choice.model, harness === parent.harness ? parentId : null);
-  // Every harness without fixed models lists its models only by running (HarnessTools.listModels), so it suggests none here.
-  const limits = yield* Effect.forEach(
-    (harnessFacts[harness].fixedModels ?? []).map((option) => option.id),
-    (model) => readContextLimit(model).pipe(Effect.map((limit) => ({ model, tokens: limit.tokens }))),
-  );
-  return {
-    isOverWarning: tokens * 100 > windowTokens * startingContextWarningPercent,
-    // The models whose limit is larger than the chosen one's, largest first: the soft limit holds all large windows alike.
-    largerModels: limits
-      .filter((limit) => limit.tokens > windowTokens)
-      .toSorted((current, next) => next.tokens - current.tokens)
-      .map((limit) => limit.model),
-    parts,
-    tokens,
-    warningPercent: startingContextWarningPercent,
-    windowTokens,
-  } satisfies StartingContext;
-});
-
-/** The refusal of a thread whose starting context is over the warning, in words, or null when it may start. */
-export const startingContextRefusalOf = (context: StartingContext) =>
-  context.isOverWarning
-    ? `Not started: its starting context takes about ${Math.round((context.tokens * 100) / context.windowTokens)}% of the model's context window, over the warning at ${context.warningPercent}%. Choose a model with a larger window, trim lore, or start it anyway.`
-    : null;
-
-/**
- * The tokens of what Outlore sends a thread each turn, by the parts of the context gauge (thread-panel): the instructions with the working folder, approval rules, and position; the lore; the journal; and the opener's messages.
- * Counted from the text, so they are estimates, and nothing is made on disk.
- */
-export const readSentContextSize = Effect.fnUntraced(function* (threadId: string) {
-  const scratchRoot = yield* ScratchRoot;
-  const { harness, ownCopy, subject, workspace } = yield* readThreadSubject(threadId);
-  const folder = yield* workingFolderOf(workspace, join(scratchRoot, subject.missionId), ownCopy);
-  const sections = yield* readSections(subject, folder.context);
-  const approvals = yield* readApprovalInstructions(threadId, harness);
-  return {
-    instructions:
-      tokensOf(sections.instructions) +
-      tokensOf(approvals) +
-      tokensOf(sections.workspace) +
-      tokensOf(sections.position) +
-      tokensOfPart(sections.budget),
-    journal: tokensOf(sections.journal),
-    lore: tokensOf(sections.lore),
-    openerMessages: tokensOfPart(sections.openerMessages),
-  };
 });

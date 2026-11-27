@@ -51,7 +51,7 @@ Sidebar drag-and-drop and confirmation were agreed on 2026-11-10 (CHG-0133) and 
 
 ### Title
 
-- A quest is called "Quest" until its top thread proposes a title on its first turn with `set_mission_title`; an errand the owner opens is called "Errand" until it names itself with the same tool. No title comes from the first message (CHG-0597).
+- A quest is called "Quest" until its top thread proposes a title on its first turn with `set_mission_title`; an errand the owner opens is called "Errand" until it names itself with the same tool. No title comes from the first message (CHG-0597). While the title is still "Quest" or "Errand", each turn's note asks the thread to name itself, so a thread that missed it on its first turn is asked again; `set_mission_title` stays a listed tool with Code Mode on (CHG-0776).
 - The app does not show an id before a name (CHG-0601 withdraws the `[Q-XXXXXX]` and `[E-XXXXXX]` display of CHG-0597).
 - The user can rename a mission at any time. Once the user has renamed it, `set_mission_title` is refused.
 

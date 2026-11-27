@@ -22,7 +22,7 @@ const coveredNames = Object.keys(threadTools)
   .filter(isCoveredByCodeMode)
   .filter((name) => !name.startsWith("phone_"));
 // A Claude Code thread, which the fake harness runs as, is also listed `answer_prompt`, which stays direct.
-const directNames = ["answer_prompt", "report_result", "request_approval", "suggest_mission"];
+const directNames = ["answer_prompt", "report_result", "request_approval", "set_mission_title", "suggest_mission"];
 
 /** Runs a test body on a service with the fake gateway, handing the body the gateway's controls. */
 const withGateway = <A, E, R>(body: (gateway: Effect.Success<typeof fakeGateway>) => Effect.Effect<A, E, R>) =>
@@ -71,7 +71,7 @@ describe("listing tools", () => {
         expect(description).toContain("/** The day, as YYYY-MM-DD. */");
         expect(description).toContain("create_event(input: {");
         // What stays direct is named, and the caps are told.
-        expect(description).toContain("answer_prompt, report_result, request_approval, suggest_mission stay listed");
+        expect(description).toContain(`${directNames.join(", ")} stay listed`);
         expect(description).toContain(`at most ${maxWorkStartsPerRun} calls that start or redirect other work`);
       }),
     ),
@@ -175,8 +175,9 @@ describe("calling Outlore's own tools from code", () => {
     Effect.gen(function* () {
       yield* turnCodeModeOn;
       const { threadId } = yield* start();
+      const directChecks = directNames.map((name) => `typeof outlore.${name}`).join(", ");
       const answered = yield* callTool(threadId, "run_code", {
-        code: "async () => [typeof fetch, typeof require, typeof process, Object.keys(connectors), Object.keys(outlore).sort(), typeof outlore.request_approval, typeof outlore.report_result, typeof outlore.suggest_mission, typeof outlore.answer_prompt]",
+        code: `async () => [typeof fetch, typeof require, typeof process, Object.keys(connectors), Object.keys(outlore).sort(), ${directChecks}]`,
       });
       expect(JSON.parse(textOf(answered))).toEqual([
         "undefined",
@@ -184,10 +185,7 @@ describe("calling Outlore's own tools from code", () => {
         "undefined",
         [],
         [...coveredNames].sort(),
-        "undefined",
-        "undefined",
-        "undefined",
-        "undefined",
+        ...directNames.map(() => "undefined"),
       ]);
     }).pipe(Effect.provide(serviceWithGateway(noConnectorsLayer))),
   );
@@ -241,6 +239,9 @@ describe("calling Outlore's own tools from code", () => {
         expect(gateway.calls).toEqual([]);
         // A direct tool reaches its own handler: its own answer, not Code Mode's refusal.
         expect(textOf(yield* callTool(threadId, "report_result", {}))).toContain("Not reported: give result");
+        expect(textOf(yield* callTool(threadId, "set_mission_title", { title: "Named under Code Mode" }))).toBe(
+          'Named the mission "Named under Code Mode".',
+        );
       }),
     ),
   );

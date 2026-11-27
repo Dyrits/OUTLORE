@@ -10,6 +10,24 @@ export const newQuestTitle = "Quest";
 /** The title of an errand until it names itself. */
 export const newErrandTitle = "Errand";
 
+/**
+ * Asks a thread still called "Quest" or "Errand" to name itself. It rides on the turn's note, not the system part, so
+ * naming the thread restarts nothing, and a thread that missed it on its first turn is asked again on the next.
+ */
+export const namingLineOf = (subject: {
+  readonly isGuildmaster: boolean;
+  readonly isTitleByUser: boolean;
+  readonly position: { readonly isAside: boolean; readonly parent: unknown; readonly title: string };
+}) => {
+  const { parent, title } = subject.position;
+  if (subject.isGuildmaster || subject.position.isAside) return null;
+  if (parent === null && !subject.isTitleByUser && title === newQuestTitle)
+    return `It is still "${newQuestTitle}": call set_mission_title now with a short title of a few words for this quest.`;
+  if (parent !== null && title === newErrandTitle)
+    return `It is still "${newErrandTitle}": call set_mission_title now with a short title of a few words for this errand.`;
+  return null;
+};
+
 /** A title from a text: its first line, trimmed, at most 200 characters. */
 export const titleOf = (text: string) => text.trim().split("\n", 1)[0]?.trim().slice(0, 200) ?? "";
 
