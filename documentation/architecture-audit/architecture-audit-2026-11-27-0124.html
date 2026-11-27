@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Architecture review for Outlore · 2026-11-27 · what a thread is</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+
+      mermaid.initialize({ flowchart: { curve: "basis" }, securityLevel: "loose", startOnLoad: true, theme: "neutral" });
+    </script>
+    <style>
+      .seam { border-style: dashed !important; }
+      .leak { color: #dc2626; border-color: #dc2626 !important; }
+      .deep { color: #f8fafc; background: linear-gradient(135deg, #0f172a, #1e293b); }
+      .faded { opacity: 0.45; }
+      .schem { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; }
+      .diagram { min-height: 300px; }
+      pre.mermaid { background: transparent; }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans">
+    <main class="max-w-5xl mx-auto px-6 py-12 space-y-14">
+      <header class="space-y-4">
+        <h1 class="font-serif text-3xl">Outlore · architecture review · 2026-11-27</h1>
+        <p class="text-sm text-slate-600">
+          Direction named by the owner: the Companion mention (a second model answering one message) is blocked by how the code says
+          "a quest", "a visible thread" and "a running turn". Scanned: <span class="font-mono">packages/service/src/work</span>,
+          <span class="font-mono">core/execution.ts</span>, <span class="font-mono">harness/harnessProcesses.ts</span>,
+          <span class="font-mono">connectors/calls.ts</span>, and the message marks in <span class="font-mono">contracts</span> and
+          <span class="font-mono">apps/app/src/ui</span>. Counts are by search on 2026-11-27.
+        </p>
+        <div class="flex flex-wrap gap-4 text-xs schem text-slate-600">
+          <span class="border border-slate-400 px-2 py-1">solid box = module</span>
+          <span class="border border-dashed border-slate-400 px-2 py-1">dashed = seam</span>
+          <span class="border border-red-600 text-red-600 px-2 py-1">red = leakage</span>
+          <span class="deep px-2 py-1">dark = deep module</span>
+        </div>
+        <p class="text-sm">
+          <strong>Short answer to "is that an architecture issue?":</strong> yes, two of them. Neither is a bug today; both are why a
+          feature that sounds small costs about 1,500 lines. Glossary terms used: Quest, Errand, Realm, Chronicler, Companion, Mention.
+        </p>
+      </header>
+
+      <section class="space-y-14" id="candidates" >
+        <!-- ═════════ 1 ═════════ -->
+        <article class="space-y-5" id="visible-quests" >
+          <h2 class="font-serif text-2xl">1 · One module decides which quests the owner has</h2>
+          <div class="flex flex-wrap gap-2 text-xs">
+            <span class="rounded bg-emerald-100 text-emerald-800 px-2 py-1 font-semibold">Strong</span>
+            <span class="rounded bg-slate-200 text-slate-700 px-2 py-1">local-substitutable (SQLite)</span>
+          </div>
+          <p class="font-mono text-sm text-slate-700 leading-relaxed">
+            work/chronicle.ts · work/mentions.ts · work/matching.ts · work/missionSummaries.ts · work/realmLifecycle.ts ·
+            work/inactivityMissives.ts · work/guildHall.ts · work/suggestions.ts · work/journalTools.ts · work/reach.ts ·
+            work/guildmasterPreflight.ts · work/guildmasterDerivation.ts · work/guildmasterContext.ts · work/questMoves.ts · work/ritualEdits.ts
+          </p>
+
+          <div class="grid md:grid-cols-2 gap-6">
+            <div class="space-y-2">
+              <div class="schem text-red-600">Before · 57 `is_guildmaster`, 60 `is_deleting`, 40 `archived_at` conditions in 21 to 32 files</div>
+              <div class="rounded-lg border border-slate-200 bg-white p-4 diagram">
+                <pre class="mermaid">
+flowchart TB
+  M[(missions + threads)]
+  A[chronicle.ts] -.->|is_guildmaster=0 AND ending IS NULL AND top.is_deleting=0| M
+  B[mentions.ts] -.->|ending IS NULL OR <> Archived AND is_guildmaster=0| M
+  C[matching.ts] -.->|top.is_deleting=0 AND is_guildmaster=0| M
+  D[missionSummaries.ts] -.->|ending=Archived OR Fulfilled, is_guildmaster=0| M
+  E[guildHall.ts] -.->|ending=Fulfilled AND done_at| M
+  F[realmLifecycle.ts] -.->|workspace_id, is_guildmaster=0, no is_deleting| M
+  G[+ 9 more] -.-> M
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class A,B,C,D,E,F,G leak
+                </pre>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <div class="schem text-emerald-700">After · one interface, callers say what they want</div>
+              <div class="rounded-lg border border-slate-200 bg-white p-4 diagram flex flex-col items-center justify-center gap-4">
+                <div class="grid grid-cols-3 gap-2 w-full text-center text-xs">
+                  <div class="border border-slate-300 py-2">chronicle</div>
+                  <div class="border border-slate-300 py-2">mentions</div>
+                  <div class="border border-slate-300 py-2">matching</div>
+                  <div class="border border-slate-300 py-2">summaries</div>
+                  <div class="border border-slate-300 py-2">hall</div>
+                  <div class="border border-slate-300 py-2">+ 9 more</div>
+                </div>
+                <div class="h-6 border-l border-dashed border-slate-500"></div>
+                <div class="deep rounded-md px-6 py-5 w-full text-center">
+                  <div class="schem">Quest visibility module</div>
+                  <div class="text-xs mt-1">ownerQuests · openQuests · quest kinds (owner, Chronicler, companion)</div>
+                  <div class="text-[0.65rem] mt-2 opacity-70">is_guildmaster · is_deleting · archived_at · ending: private</div>
+                </div>
+                <div class="h-6 border-l border-dashed border-slate-500"></div>
+                <div class="border border-slate-300 faded px-4 py-2 text-xs">missions + threads (SQLite)</div>
+              </div>
+            </div>
+          </div>
+
+          <p><strong>Problem.</strong> "A quest the owner can see" is re-spelled in about 25 queries, and the spellings have drifted: some skip `is_deleting`, <span class="font-mono">mentions.ts</span> uses <span class="font-mono">&lt;&gt; 'Archived'</span> where <span class="font-mono">missionSummaries.ts</span> uses <span class="font-mono">= 'Archived'</span>, <span class="font-mono">guildHall.ts</span> and <span class="font-mono">realmLifecycle.ts</span> look at neither <span class="font-mono">is_deleting</span> nor the same endings.</p>
+          <p><strong>Solution.</strong> Deepen one module that owns the quest kinds and exposes reading and fragment interfaces (<span class="font-mono">visibleQuestsOf(sql, scope)</span>); the raw flags stop being read outside it. <span class="font-mono">mentions.ts</span> already has the seed: <span class="font-mono">isOpenQuestOf</span>.</p>
+          <ul class="list-disc pl-6 text-sm space-y-1">
+            <li>Locality: a new quest kind (companion) changes one module</li>
+            <li>Leverage: one interface, about 25 call sites</li>
+            <li>Tests hit one interface, with every kind as a case</li>
+            <li>Drift between the spellings becomes visible and settled once</li>
+            <li>Unblocks the Companion mention at about 35 fewer edits</li>
+          </ul>
+          <p class="text-xs bg-amber-50 border border-amber-200 rounded px-3 py-2">No decision record forbids it. ADR 0015 (realms tied or not, one Borderlands) is the nearest and is not touched.</p>
+        </article>
+
+        <!-- ═════════ 2 ═════════ -->
+        <article class="space-y-5" id="turn-scope" >
+          <h2 class="font-serif text-2xl">2 · A turn owns its own run state, not the thread</h2>
+          <div class="flex flex-wrap gap-2 text-xs">
+            <span class="rounded bg-emerald-100 text-emerald-800 px-2 py-1 font-semibold">Strong</span>
+            <span class="rounded bg-slate-200 text-slate-700 px-2 py-1">in-process</span>
+          </div>
+          <p class="font-mono text-sm text-slate-700 leading-relaxed">
+            work/threads.ts (<span>active</span>) · work/turnRunner.ts (the <span>ensuring</span> block) · core/execution.ts (<span>running</span>) ·
+            harness/harnessProcesses.ts (<span>entries</span>, <span>starting</span>) · core/endpoints.ts (<span>codeModes</span>, <span>threads</span>) ·
+            work/approvals.ts (<span>allowances</span>) · connectors/calls.ts (<span>snapshots</span>) · work/lifecycle.ts (<span>endTurn</span> session id)
+          </p>
+
+          <div class="grid md:grid-cols-2 gap-6">
+            <div class="space-y-2">
+              <div class="schem text-red-600">Before · seven thread-keyed stores, six owners, cleanup assembled by hand</div>
+              <div class="rounded-lg border border-slate-200 bg-white p-4 diagram">
+                <pre class="mermaid">
+flowchart LR
+  R[turnRunner.ts]
+  R -->|active.set / delete| T[Threads.active]
+  R -->|holdCodeMode| E[Endpoints.codeModes]
+  R -->|beginTurn / endTurn| G[Gateway.snapshots]
+  R -->|endTurn| P[Approvals.allowances]
+  R -->|runTurn| X[router.running]
+  X --> H[harnessProcesses.entries]
+  R -->|completeTurn| L[lifecycle: thread session id]
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class T,E,G,P,X,H,L leak
+                </pre>
+              </div>
+              <p class="text-xs text-slate-600">Every box is keyed by thread id. A second run on one thread shares all seven.</p>
+            </div>
+            <div class="space-y-2">
+              <div class="schem text-emerald-700">After · one scope per turn, released together</div>
+              <div class="rounded-lg border border-slate-200 bg-white p-4 diagram flex flex-col items-center justify-center gap-4">
+                <div class="border border-slate-300 px-4 py-2 text-xs w-full text-center">turnRunner.ts · opens a scope, runs, closes it</div>
+                <div class="h-6 border-l border-dashed border-slate-500"></div>
+                <div class="deep rounded-md px-6 py-5 w-full text-center">
+                  <div class="schem">Turn scope module</div>
+                  <div class="text-xs mt-1">openTurnScope(thread, run key) → steer · interrupt · allowances · snapshot · code mode · process</div>
+                  <div class="text-[0.65rem] mt-2 opacity-70">one finalizer releases everything; the thread's own session is written only by its main scope</div>
+                </div>
+                <div class="grid grid-cols-3 gap-2 w-full text-center text-[0.65rem] faded">
+                  <div class="border border-slate-300 py-2">harness pool</div>
+                  <div class="border border-slate-300 py-2">approvals</div>
+                  <div class="border border-slate-300 py-2">connector gateway</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p><strong>Problem.</strong> What a turn holds is spread over six modules and released in an <span class="font-mono">Effect.ensuring</span> that must list each one; a second run on the same thread would clear the first's one-time approvals and connector snapshot and overwrite its session id.</p>
+          <p><strong>Solution.</strong> Key run state by a run key held in one scope, with the thread's session id and state written only by the main scope; the pool and the router take the run key from the scope instead of reading <span class="font-mono">request.threadId</span>.</p>
+          <ul class="list-disc pl-6 text-sm space-y-1">
+            <li>Locality: adding a store touches the scope, not the runner</li>
+            <li>Leverage: steer, interrupt and cleanup behind one interface</li>
+            <li>A leaked allowance after a failed turn becomes one test</li>
+            <li>The scope is the test surface: two scopes on one thread</li>
+            <li>A Companion mention can run beside the main turn</li>
+          </ul>
+          <p class="text-xs bg-amber-50 border border-amber-200 rounded px-3 py-2">Touches <span class="font-mono">harness/</span> files that API-key work is editing; sequence after that batch. ADR 0005 (thread tools over MCP) and ADR 0008 (drive harness tools directly) are not contradicted.</p>
+        </article>
+
+        <!-- ═════════ 3 ═════════ -->
+        <article class="space-y-5" id="message-marks" >
+          <h2 class="font-serif text-2xl">3 · The message marks (<span class="font-mono">#  +  $  @</span>) have one definition</h2>
+          <div class="flex flex-wrap gap-2 text-xs">
+            <span class="rounded bg-amber-100 text-amber-800 px-2 py-1 font-semibold">Worth exploring</span>
+            <span class="rounded bg-slate-200 text-slate-700 px-2 py-1">in-process</span>
+          </div>
+          <p class="font-mono text-sm text-slate-700 leading-relaxed">
+            contracts/mentions.ts · contracts/skills.ts · contracts/workspaceEntries.ts · app ui/chipEditorTypes.ts · ui/chipPlaces.ts ·
+            ui/composerList.ts · ui/mentionMenu.ts · service work/pendingMessages.ts · work/skills.ts · work/mentions.ts · work/suggestions.ts · guide texts
+          </p>
+
+          <div class="grid md:grid-cols-2 gap-6">
+            <div class="space-y-2">
+              <div class="schem text-red-600">Before · each mark is re-stated in six places</div>
+              <div class="rounded-lg border border-slate-200 bg-white p-4 diagram">
+                <pre class="mermaid">
+flowchart TB
+  K((one mark, e.g. $))
+  K -.-> C1[token pattern: contracts]
+  K -.-> C2[trigger pattern: chipEditorTypes]
+  K -.-> C3[menu rows: mentionMenu / composerList]
+  K -.-> C4[chip kind + icon: chipPlaces / chips]
+  K -.-> C5[delivery note: pendingMessages + skills + mentions]
+  K -.-> C6[the thread-written word filter: suggestions]
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class C1,C2,C3,C4,C5,C6 leak
+                </pre>
+              </div>
+              <p class="text-xs text-slate-600">Moving skills from <span class="font-mono">/</span> to <span class="font-mono">$</span> today edited about 25 files and missed one: <span class="font-mono">pendingMessages.ts</span> still looked for skills only when the text held a slash, so a <span class="font-mono">$skill</span> without a path got no instructions. Found by this review, fixed with an end-to-end test.</p>
+            </div>
+            <div class="space-y-2">
+              <div class="schem text-emerald-700">After · a table of marks, drawn from by each reader</div>
+              <div class="rounded-lg border border-slate-200 bg-white p-4 diagram flex flex-col items-center justify-center gap-4">
+                <div class="deep rounded-md px-6 py-5 w-full text-center">
+                  <div class="schem">Message marks module (contracts)</div>
+                  <div class="text-xs mt-1">mark → trigger · token grammar · kind · what delivery tells the thread · reach</div>
+                </div>
+                <div class="h-6 border-l border-dashed border-slate-500"></div>
+                <div class="grid grid-cols-3 gap-2 w-full text-center text-xs">
+                  <div class="border border-slate-300 py-2">composer list</div>
+                  <div class="border border-slate-300 py-2">chip drawing</div>
+                  <div class="border border-slate-300 py-2">delivery note</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p><strong>Problem.</strong> The grammar of a mark lives in the contracts, the app and the service separately; a change to a mark has no single place to be made or tested.</p>
+          <p><strong>Solution.</strong> One module in <span class="font-mono">contracts</span> describes each mark once (trigger, token, chip kind, delivery line, whether it grants reach); the composer, the chips and the delivery note read it. The <span class="font-mono">@</span> Companion mark then becomes one more row.</p>
+          <ul class="list-disc pl-6 text-sm space-y-1">
+            <li>Locality: a mark changes in one file</li>
+            <li>Leverage: one table, three readers</li>
+            <li>One test per mark covers type, chip and delivery</li>
+            <li>The stale slash guard could not recur</li>
+          </ul>
+          <p class="text-xs bg-amber-50 border border-amber-200 rounded px-3 py-2">Smaller than 1 and 2 and independent of both; worth doing before <span class="font-mono">@</span> is added.</p>
+        </article>
+      </section>
+
+      <section id="top-recommendation">
+        <div class="rounded-xl border-2 border-slate-900 bg-white p-6 space-y-3">
+          <h2 class="font-serif text-2xl">Top recommendation</h2>
+          <p>
+            <a class="underline" href="#turn-scope">Candidate 2, the turn scope</a> first: it is the one the Companion mention cannot
+            work around, and it is what makes a second run beside a main turn safe. Then
+            <a class="underline" href="#visible-quests">candidate 1</a>, so a hidden quest kind costs one module instead of about 35 edits.
+            Candidate 3 is cheap and can go in at any time.
+          </p>
+          <p class="text-sm text-slate-600">
+            With 1 and 2 in place, the Companion mention is a thin feature: a hidden quest kind, a scope beside the main one, the reply copy,
+            and the <span class="font-mono">@</span> row. Without them it is the 1,500-line change described in the thread-messaging blueprint.
+          </p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

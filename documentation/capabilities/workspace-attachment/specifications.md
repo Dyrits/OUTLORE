@@ -43,12 +43,12 @@ The sidebar's **Visit a new realm** offers **New project**, **Local folder**, **
 - Archiving the mission keeps its scratch folder; deleting the mission deletes it.
 - Standing permissions for a thread with no workspace apply to its mission (see [action-approval](../action-approval/specifications.md#standing-permissions)).
 
-### Naming files and folders with @
+### Naming files and folders with +
 
-- Typing `@` at the start of a word in a message box offers mention categories, including files and folders of the workspace the message is written in when it has a linked folder. A category shows up to 12 items; text after `@` shows up to 5 matches per category under headings. Files and folders match by name or path; Tab, Enter, or a click completes the path, relative to the workspace, a folder's ending with a slash so the list goes on inside it. The text stays as typed and reaches the thread unchanged. Once chosen, a path shows as a chip with a file or folder icon in the owner's messages (a skill likewise with a puzzle piece), and, in the message box, as a chip inside the text where it was chosen, removed like a character, and sent as plain text.
+- Typing `+` at the start of a word (a mark for adding a file to the context, so a root file such as `.gitignore` is `+.gitignore`) in a message box lists the files and folders of the workspace the message is written in when it has a linked folder, up to 12 items. Text after `./` narrows them: files and folders match by name or path; Tab, Enter, or a click completes the path, relative to the workspace, a folder's ending with a slash so the list goes on inside it. The text is written `+<path>`; the thread is told with a line that `+<path>` is that path relative to its working folder and reaches the thread unchanged. Once chosen, a path shows as a chip with a file or folder icon in the owner's messages, and, in the message box, as a chip inside the text where it was chosen, removed like a character, and sent as plain text.
 - In a git workspace the list leaves out what `.gitignore` ignores; otherwise it skips `.git` and `node_modules`.
-- With no workspace (a quest in its scratch folder) an `@` offers no files or folders; it still offers quests and realms (CHG-0181).
-- The `@` list also names quests, errands, and realms beside files and folders; the menu and what a mention does are in [thread-messaging](../thread-messaging/specifications.md#mentions-with-) (CHG-0181).
+- With no workspace (a quest in its scratch folder) a `+` offers nothing.
+- Quests, errands, and realms are named with `#`, skills with `$`, and Companions with `@`; see [thread-messaging](../thread-messaging/specifications.md#mentions-with-). This replaced `@` for files on 2026-11-27 (CHG-0777): an `@path` in a message sent earlier shows as plain text.
 
 ### What a workspace gives its threads
 

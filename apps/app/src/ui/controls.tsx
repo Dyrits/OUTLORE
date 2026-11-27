@@ -67,11 +67,11 @@ export function Composer({
   accessory?: ReactNode;
   /** Opens an errand from the icon after the send button. */
   onOpenSideQuest?: () => void;
-  /** The skills a slash offers; a slash-name matching one is highlighted. */
+  /** The skills a `$` offers; a `$`-name matching one is highlighted. */
   skills?: ReadonlyArray<Skill>;
   /**
-   * What an `@` names: quests, errands, and realms, and the files and folders of the workspace when it has a path
-   * (CHG-0181). Without it, an `@` offers nothing.
+   * What a `#` names: realms, quests, and errands; and what a `+` names: the files and folders of the workspace when it
+   * has a path (CHG-0181, CHG-0777). Without it, neither offers anything.
    */
   mentions?: { readonly client: ServiceClient; readonly workspacePath: string | null };
   /** A microphone that puts spoken words in the box, transcribed by the host (voice-input); shown only where it can record. */

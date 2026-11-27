@@ -48,6 +48,7 @@ export * from "./journal.ts";
 export * from "./journalRequests.ts";
 export * from "./lore.ts";
 export * from "./loreRequests.ts";
+export * from "./marks.ts";
 export * from "./mentions.ts";
 export { isRecord } from "./objects.ts";
 export * from "./phoneCalls.ts";

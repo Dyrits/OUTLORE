@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mentionReferencesOf, mentionTokenOf, realmSlugOf, realmTokensOf } from "../src/index.ts";
+import { mentionReferencesOf, mentionTokenOf, realmSlugOf, referenceTokensOf } from "../src/index.ts";
 
 describe("a realm's name written like a Slack channel", () => {
   it("lowercases, joins words with single hyphens, and drops accents and edge hyphens", () => {
@@ -21,20 +21,20 @@ describe("a realm's name written like a Slack channel", () => {
   });
 });
 
-describe("naming a realm with # in a message", () => {
-  it("writes a realm with # and a quest or errand with @", () => {
+describe("naming a realm, quest, or errand with # in a message", () => {
+  it("writes each kind with a #", () => {
     expect(mentionTokenOf({ id: "r1", kind: "realm" })).toBe("#realm:r1");
-    expect(mentionTokenOf({ id: "q1", kind: "quest" })).toBe("@quest:q1");
-    expect(mentionTokenOf({ id: "t1", kind: "side-quest" })).toBe("@side-quest:t1");
+    expect(mentionTokenOf({ id: "q1", kind: "quest" })).toBe("#quest:q1");
+    expect(mentionTokenOf({ id: "t1", kind: "side-quest" })).toBe("#side-quest:t1");
   });
 
-  it("finds #realm words that start a word, with their position, and nothing else with a #", () => {
+  it("finds # words that start a word, with their position, and nothing else with a #", () => {
     const text = "Use #realm:4d-e, not issue #12 or a#realm:x or # realm:y.";
-    expect(realmTokensOf(text)).toEqual([{ end: 15, path: "realm:4d-e", start: 4 }]);
+    expect(referenceTokensOf(text)).toEqual([{ end: 15, path: "realm:4d-e", start: 4 }]);
   });
 
-  it("reads # and the older @realm: references in order, each once", () => {
-    expect(mentionReferencesOf("#realm:a then @quest:b, @realm:a again, #realm:c.")).toEqual([
+  it("reads the # references in order, each once, and not the @ words written before CHG-0777", () => {
+    expect(mentionReferencesOf("#realm:a then #quest:b, @quest:z, @realm:a again, #realm:c, #realm:a.")).toEqual([
       { id: "a", kind: "realm" },
       { id: "b", kind: "quest" },
       { id: "c", kind: "realm" },

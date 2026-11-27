@@ -1,20 +1,26 @@
-import { type Mentionable, mentionLabelOf, type WorkspaceEntry } from "@outlore/contracts";
+import { type Mentionable, markedWordOf, mentionLabelOf, type WorkspaceEntry } from "@outlore/contracts";
 import type { Chip } from "./chipEditorTypes";
 import { chipOfMentionable } from "./chipPlaces";
 import type { ChipKind } from "./chips";
 
-// What the list above the message box offers after a typed `@` or `#` (CHG-0181): a bare `@` shows the categories, a
-// chosen category its items, and any text after the `@` the matches of every category under its heading; a `#` shows
-// the realms, narrowed by what follows it.
+// What the list above the message box offers after a typed `#` or `+` (CHG-0181, CHG-0777): a bare `#` shows the
+// categories (realms, quests, errands), a chosen category its items, and any text after the `#` the matches of every
+// category under its heading; a `+` shows the files and folders of the workspace, narrowed by what follows it.
 
-/** The groups an `@` names things from. */
-export type MentionCategory = "quests" | "files";
+/** The groups a `#` names things from. */
+export type MentionCategory = "realms" | "quests" | "errands";
 
-/** Each category's heading and the icon it shows. */
+/** Each category's heading, the icon it shows, and the kind of reference it lists. */
 export const mentionCategories = {
-  files: { kind: "folder", label: "Files & Directories" },
-  quests: { kind: "quest", label: "Quests" },
-} as const satisfies Record<MentionCategory, { readonly kind: ChipKind; readonly label: string }>;
+  errands: { kind: "errand", label: "Errands", mention: "side-quest" },
+  quests: { kind: "quest", label: "Quests", mention: "quest" },
+  realms: { kind: "realm", label: "Realms", mention: "realm" },
+} as const satisfies Record<
+  MentionCategory,
+  { readonly kind: ChipKind; readonly label: string; readonly mention: Mentionable["kind"] }
+>;
+
+const categories: ReadonlyArray<MentionCategory> = ["realms", "quests", "errands"];
 
 /** One line of the list: a category to open, a heading over a category's matches, or an item to put in the message. */
 export type MenuRow =
@@ -29,7 +35,7 @@ export const selectableRowsOf = (rows: ReadonlyArray<MenuRow>) => rows.filter((r
 const CATEGORY_LIMIT = 12;
 const MIXED_LIMIT = 5;
 
-const questOptionOf = (mentionable: Mentionable): MenuRow => ({
+const mentionableOptionOf = (mentionable: Mentionable): MenuRow => ({
   chip: chipOfMentionable(mentionable),
   description: mentionable.detail ?? (mentionable.kind === "realm" ? "Tied to no folder" : "No realm"),
   key: `${mentionable.kind}:${mentionable.id}`,
@@ -37,47 +43,31 @@ const questOptionOf = (mentionable: Mentionable): MenuRow => ({
 });
 
 const entryOptionOf = (entry: WorkspaceEntry): MenuRow => ({
-  chip: { kind: entry.kind, label: entry.path, token: `@${entry.path}` },
+  chip: { kind: entry.kind, label: entry.path, token: markedWordOf("path", entry.path) },
   description: "",
   key: `path:${entry.path}`,
   type: "option",
 });
 
 /**
- * The list for what follows a typed `@`. With nothing typed after it: the categories, Files & Directories only when a
- * folder is linked, or the chosen category's items. With text: each category's matches under its heading, a quest
- * matching on its title or an errand on its path (`Quest › Errand`), and the workspace's entries as the service found
- * them. For a typed `#`: the realms whose name holds what follows it, with no categories or headings.
+ * The list for what follows a typed `#`. With nothing typed after it: the categories, or the chosen category's items.
+ * With text: each category's matches under its heading, a quest or realm matching on its name and an errand on its path
+ * (`Quest › Errand`).
  */
 export const mentionMenuOf = (given: {
-  /** The character the owner typed; `@` when left out. */
-  readonly character?: "@" | "#";
   readonly query: string;
   readonly category: MentionCategory | null;
-  readonly hasFolder: boolean;
   readonly mentionables: ReadonlyArray<Mentionable>;
-  readonly entries: ReadonlyArray<WorkspaceEntry>;
 }): ReadonlyArray<MenuRow> => {
-  if (given.character === "#")
-    return given.mentionables
-      .filter((each) => each.kind === "realm" && mentionLabelOf(each).toLowerCase().includes(given.query.toLowerCase()))
-      .slice(0, CATEGORY_LIMIT)
-      .map(questOptionOf);
-  const categories: ReadonlyArray<MentionCategory> = given.hasFolder ? ["quests", "files"] : ["quests"];
   const needle = given.query.toLowerCase();
   const itemsOf = (category: MentionCategory, limit: number): ReadonlyArray<MenuRow> =>
-    category === "files"
-      ? given.entries
-          .filter((entry) => entry.path !== given.query)
-          .slice(0, limit)
-          .map(entryOptionOf)
-      : given.mentionables
-          .filter((each) => each.kind !== "realm")
-          .filter((each) => mentionLabelOf(each).toLowerCase().includes(needle))
-          .slice(0, limit)
-          .map(questOptionOf);
+    given.mentionables
+      .filter((each) => each.kind === mentionCategories[category].mention)
+      .filter((each) => mentionLabelOf(each).toLowerCase().includes(needle))
+      .slice(0, limit)
+      .map(mentionableOptionOf);
   if (given.query === "") {
-    if (given.category === null || !categories.includes(given.category))
+    if (given.category === null)
       return categories.map((category) => ({ category, key: `category:${category}`, type: "category" }));
     return itemsOf(given.category, CATEGORY_LIMIT);
   }
@@ -87,6 +77,16 @@ export const mentionMenuOf = (given: {
   });
 };
 
+/** The list for what follows a typed `+`: the workspace's files and folders as the service found them, but not the path already typed. */
+export const pathMenuOf = (given: {
+  readonly query: string;
+  readonly entries: ReadonlyArray<WorkspaceEntry>;
+}): ReadonlyArray<MenuRow> =>
+  given.entries
+    .filter((entry) => entry.path !== given.query)
+    .slice(0, CATEGORY_LIMIT)
+    .map(entryOptionOf);
+
 /** What a key does to the open list, or null when the key is the field's own. */
 export type MenuKeyAction =
   | { readonly type: "move"; readonly by: 1 | -1 }
@@ -95,7 +95,7 @@ export type MenuKeyAction =
 
 /**
  * The list's keys: arrows move, Enter or Tab chooses (opening a category, or putting an item in the message), and
- * Backspace right after a bare `@` in a category returns to the categories instead of erasing the `@`.
+ * Backspace right after a bare `#` in a category returns to the categories instead of erasing the `#`.
  */
 export const menuKeyActionOf = (
   key: { readonly key: string; readonly shiftKey: boolean },

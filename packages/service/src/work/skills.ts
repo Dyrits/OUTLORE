@@ -1,10 +1,10 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { type Skill, skillTokensOf } from "@outlore/contracts";
+import { markedWordOf, messageMarks, type Skill, skillTokensOf } from "@outlore/contracts";
 import { Effect } from "effect";
 
-// The skills a message can name with a slash, found in the existing skill folders (tool-and-skill-loading).
+// The skills a message can name with a `$`, found in the existing skill folders (tool-and-skill-loading, CHG-0777).
 
 /** The skill folders under a root, nearest preference first: `.agents/skills`, then Claude Code's. */
 const skillFoldersOf = (root: string) => [join(root, ".agents", "skills"), join(root, ".claude", "skills")];
@@ -74,6 +74,8 @@ export const addSkillInstructions = (text: string, skills: ReadonlyArray<Skill>)
     return skill === undefined ? [] : [skill];
   });
   if (named.length === 0) return text;
-  const lines = named.map((skill) => `- /${skill.name}: read ${skill.path} and follow its instructions.`);
-  return `${text}\n\nThe message names these skills:\n${lines.join("\n")}`;
+  const lines = named.map(
+    (skill) => `- ${markedWordOf("skill", skill.name)}: read ${skill.path} and follow its instructions.`,
+  );
+  return `${text}\n\n${messageMarks.skill.deliveryHeading}\n${lines.join("\n")}`;
 };

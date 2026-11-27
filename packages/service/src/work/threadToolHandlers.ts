@@ -205,7 +205,7 @@ export const makeToolHandlers = (dependencies: {
           isSent
             ? toolText("Sent.")
             : toolRefusal(
-                "Not sent: you can only message your parent, a thread directly beneath you, Chronicler, a quest or errand the owner mentioned with @ in this turn, or a thread that wrote to you in this turn, by its id.",
+                "Not sent: you can only message your parent, a thread directly beneath you, Chronicler, a quest or errand the owner mentioned with # in this turn, or a thread that wrote to you in this turn, by its id.",
               ),
         ),
       ),

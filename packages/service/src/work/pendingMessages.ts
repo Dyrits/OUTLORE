@@ -1,4 +1,4 @@
-import type { SendToParentScope } from "@outlore/contracts";
+import { hasMark, type SendToParentScope } from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { invalid } from "../core/index.ts";
@@ -44,15 +44,15 @@ export const listPending = Effect.fnUntraced(function* (threadId: string, isStee
       WHERE m.thread_id = ${threadId} AND ${isPendingDeliveryOf(sql)}
         AND ${isSteering ? sql`m.is_queued = 0` : sql`1 = 1`}
       ORDER BY m.sequence`;
-  // The owner's slash-names become pointers to the skills' instructions, as the thread's workspace sees them.
-  const skills = rows.some((row) => row.fromThreadId === null && row.text.includes("/"))
+  // The owner's `$`-names become pointers to the skills' instructions, as the thread's workspace sees them.
+  const skills = rows.some((row) => row.fromThreadId === null && hasMark(row.text, "skill"))
     ? yield* listSkills((yield* readThreadWorkspace(threadId))?.path ?? null)
     : [];
   const attachments = yield* readStoredAttachments(rows.map((row) => row.id));
   return yield* Effect.forEach(
     rows,
     Effect.fnUntraced(function* (row) {
-      // The owner's `@` mentions of quests, errands, and realms are resolved as they are delivered (CHG-0181).
+      // The owner's `#` mentions of quests, errands, and realms are resolved as they are delivered (CHG-0181).
       const note = row.isOwner === 1 ? yield* readMentionNote(row.text) : "";
       return {
         attachments: attachments.get(row.id) ?? [],

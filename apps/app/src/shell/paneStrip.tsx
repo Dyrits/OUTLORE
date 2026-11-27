@@ -189,7 +189,7 @@ function PlusMark() {
   );
 }
 
-/** The branch that marks an errand, as in @ mentions. */
+/** The branch that marks an errand, as in # mentions. */
 function ErrandMark() {
   return (
     <Svg

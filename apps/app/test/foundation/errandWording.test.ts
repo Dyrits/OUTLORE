@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 // The interface, Chronicler's guide, the thread tool descriptions and the instructions threads read call a side-quest an
-// errand (CHG-0449). Identifiers such as `sideQuest` stay, and so does the stored reference `@side-quest:<id>` with its
+// errand (CHG-0449). Identifiers such as `sideQuest` stay, and so does the stored reference `#side-quest:<id>` with its
 // kind "side-quest", which saved messages hold. Everything else in the sources must use the new word, comments included,
 // so the old one does not come back unnoticed.
 const sources = import.meta.glob(
@@ -14,7 +14,14 @@ const sources = import.meta.glob(
 );
 
 /** The places the old word is allowed: the stored token, the quoted kind, and its pattern and code spans. */
-const allowed = [/@side-quest:/g, /"side-quest"/g, /'side-quest'/g, /`side-quest`/g, /\(quest\|side-quest\|realm\)/g];
+const allowed = [
+  /[@#]side-quest:/g,
+  /"side-quest"/g,
+  /'side-quest'/g,
+  /`side-quest`/g,
+  /\(quest\|side-quest\|realm\)/g,
+  /\(\?:quest\|side-quest\|(?:errand\|)?realm\)/g,
+];
 
 describe("the words for a thread beneath another", () => {
   it("reads the sources it guards", () => {
@@ -29,8 +36,8 @@ describe("the words for a thread beneath another", () => {
   });
 
   it("still holds the stored token the sweep must not touch", () => {
-    const text = Object.entries(sources).find(([path]) => path.endsWith("contracts/src/mentions.ts"))?.[1] ?? "";
-    expect(text).toContain("@side-quest:");
+    const text = Object.entries(sources).find(([path]) => path.endsWith("contracts/src/marks.ts"))?.[1] ?? "";
+    expect(text).toContain("#side-quest:");
     expect(text).toContain('"side-quest"');
   });
 });

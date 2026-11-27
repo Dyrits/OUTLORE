@@ -3,7 +3,7 @@ import { styles } from "../foundation/styles";
 import { ChipIcon } from "./chips";
 import { type MenuRow, mentionCategories } from "./mentionMenu";
 
-/** The list a `/` or an `@` opens above the message box: headings, categories, and the rows to choose from. */
+/** The list a `$`, `+`, or `#` opens above the message box: headings, categories, and the rows to choose from. */
 export function ComposerMenu({
   highlighted,
   onChoose,

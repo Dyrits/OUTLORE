@@ -1,9 +1,17 @@
-import { type Mentionable, type MentionReference, mentionReferencesOf, mentionTokenOf } from "@outlore/contracts";
+import {
+  type Mentionable,
+  type MentionReference,
+  markedWordOf,
+  mentionReferencesOf,
+  mentionTokenOf,
+  messageMarks,
+  pathTokensOf,
+} from "@outlore/contracts";
 import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { readMissionSummaryMap } from "./matching.ts";
 
-// Quests and errands the owner names with `@`, and realms with `#` (thread-messaging, Who can message whom; CHG-0181): what the
+// Quests, errands, and realms the owner names with `#` (thread-messaging, Who can message whom; CHG-0181, CHG-0777): what the
 // menu offers, the reference appended to the message the harness reads, and what a mention opens for the turn it reaches.
 
 /** A thread of a quest not archived. */
@@ -172,15 +180,25 @@ const resolvers = {
 
 const resolveMention = (reference: MentionReference) => resolvers[reference.kind](reference);
 
+/** The line that says a `+path` word is a file or folder of the working folder; empty when the message holds none. */
+export const pathNoteOf = (text: string) => {
+  const paths = [...new Set(pathTokensOf(text).map((token) => token.path))];
+  if (paths.length === 0) return "";
+  return `\n\n[${messageMarks.path.deliveryHeading} ${paths.map((path) => `${markedWordOf("path", path)} = ${path}`).join(", ")}.]`;
+};
+
 /**
  * What the owner's message tells its receiving thread about the quests, errands, and realms it mentions: a block
  * appended after the owner's own words, which stay as typed; empty when it mentions none.
  */
 export const readMentionNote = Effect.fnUntraced(function* (text: string) {
   const references = mentionReferencesOf(text);
-  if (references.length === 0) return "";
   const resolved = yield* Effect.forEach(references, resolveMention);
-  return `\n\n[The owner mentioned these with @ or #, as context: decide from their words whether to look at each or write to it.\n${resolved.map((mention) => mention.line).join("\n")}]`;
+  const mentions =
+    resolved.length === 0
+      ? ""
+      : `\n\n[${messageMarks.mention.deliveryHeading}\n${resolved.map((mention) => mention.line).join("\n")}]`;
+  return `${mentions}${pathNoteOf(text)}`;
 });
 
 /** What a thread may reach beyond its tree during its current turn, from what was delivered to that turn. */

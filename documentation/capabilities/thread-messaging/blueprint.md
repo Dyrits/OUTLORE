@@ -6,7 +6,7 @@ Status: proposed technical design under the [first slice design](../../first-sli
 
 Messaging exposes `send`, `reportResult`, `interrupt`, and `readConversation`. It persists messages, sender identity, sequence, requested delivery mode, delivery status, reply relationship, and result status. Threads owns lifecycle and scheduling; Messaging never starts a second turn beside an existing one.
 
-Bind MCP calls to their sending thread. Permit its parent and direct descendants. A later reference resolver will issue validated target references for cross-tree and cross-mission messages; plain text that claims an `@` reference grants no access. Replies use the persisted originating message's authorized return target. Before reference support exists, refuse unsupported targets explicitly rather than accepting arbitrary thread identifiers.
+Bind MCP calls to their sending thread. Permit its parent and direct descendants. A later reference resolver will issue validated target references for cross-tree and cross-mission messages; plain text that claims a `#` reference grants no access. Replies use the persisted originating message's authorized return target. Before reference support exists, refuse unsupported targets explicitly rather than accepting arbitrary thread identifiers.
 
 An owner message can request Steer or Queue; Queue is the default, with no setting (CHG-0523). Execution returns whether it accepted mid-turn delivery. When unsupported, queue for the next turn and expose that outcome. Waiting, Idle, and Done receivers wake; Stopped receivers retain messages without waking. A failed receiver retains delivery for explicit recovery rather than retrying a broken process indefinitely.
 
@@ -44,3 +44,29 @@ Interruption requires the owner or the direct parent, ends the active turn, and 
 ## Open
 
 Review the proposed delivery records, recovery behavior, and chatter reset interpretation before implementation. Cross-mission reference resolution remains staged with mission-coordination.
+
+## Mentioning a Companion with @
+
+Status: proposed (CHG-0777, 2026-11-27); no production code written. Serves the [Companion mention](specifications.md#mentioning-a-companion-with-) behavior: a model chosen with `@` answers one message in the same conversation while the main Companion carries on and sees both as context.
+
+**What the code does today, and why it decides the design.** A thread has one running turn at a time, one kept harness process, and one session id, keyed by its thread id in three places that cannot be split cheaply: the router's `running` map (`core/execution.ts`, which routes interrupt and steer), each adapter's process pool (`harness/harnessProcesses.ts`, keyed by `request.threadId` and restarted when the model, effort, folder, account, or access changes), and the tool server's address and approvals, which take the thread id and its foreign keys. A second model run on the same thread id would therefore restart the main Companion's process, overwrite its interrupt route, and share its session. Running it as a synthetic id would break the foreign keys on messages, turns, and approvals.
+
+**Recommended design: a companion thread in a hidden one-thread quest.** A message that holds a Companion mention opens, once per model and conversation, a **companion thread**: a real thread, so turns, approvals, the tool server, budgets, and process pooling apply unchanged and none of the three thread-id keys above is shared. It is the top thread of its own hidden quest (`missions.is_companion = 1`), not a child of the conversation, so it is not an errand (no errand of an errand), it never counts in the quest's tree, state, or limits, and it is found through a table `companion_threads(parent_thread_id, harness, account_id, model, thread_id, last_seen_message_id)`, which also gives the owner's rule of one resumed session per model per conversation. It takes the parent thread's workspace and permission mode, and the chosen harness, account, model, and effort.
+
+**Measured cost of hiding it** (2026-11-27, by search): 31 service files hold 57 `is_guildmaster` conditions, about 35 of them the `is_guildmaster = 0` exclusions that keep Chronicler's quest out of lists (summaries, Chronicle, mentions, matching, realm lifecycle, inactivity, hall, usage); a new `is_companion` flag must join each of those, as a single shared SQL fragment, and every other query that lists missions by another route must be found by tests. Elsewhere 180 queries in 78 files read `threads`, which is why the companion thread is a quest of its own and not a hidden child: a child would have to be excluded from the tree, counts, rollups, deletion, and limits in all of them.
+
+**Rejected: a second harness run on the conversation's own thread.** The router's `running` map, each adapter's process pool, the tool server's address, and the runner's per-thread state (`active`, `approvals.endTurn`, `connectorGateway.endTurn`, the thread's stored session id) are all keyed by thread id. Giving the side run its own process key fixes the pool but leaves the rest sharing state silently: the side run's end would clear the main turn's once-allowed approvals and connector snapshot and overwrite its session id.
+
+| Part | Interface | Test seam |
+| --- | --- | --- |
+| Token | `@companion:<harness>:<account or ->:<model, percent-encoded>` word, `companionTokensOf(text)` in contracts beside `referenceTokensOf`; characters limited to letters, digits, `_`, `-`, `%` so a sentence's closing punctuation never joins it | contracts unit test of the token and the plain-text cases |
+| Menu | `ListCompanions` request: every signed-in account's models, one row per account with its harness and account in the description, read from `harnessCatalog` and `accounts`; the Companion category and the mixed search in `mentionMenu.ts` | app test on `composerListOf` with an `@` trigger |
+| Opening | `answerCompanionMentions(messageId)` in `work/`, called once the owner's message is stored: finds or makes the hidden quest and thread, then delivers one message holding the owner's words and the conversation since `last_seen_message_id` (clipped), so the companion needs no tool to read it | service test with the fake harness: a mention opens one companion thread on the named model, a second mention resumes it |
+| Main thread | the message is delivered to the main thread as a context-only item that does not wake it (a flag on the message read by `listThreadsWithPending`), and, once answered, so is the answer | service test: the main thread's turn count is unchanged |
+| Answering | when a companion thread's turn completes, its reply is copied into the conversation as an agent message carrying the model and account, anchored to the owner's message (the `parentEcho` path) | service test: the reply appears once, beneath the message, with its label |
+| Refusals | a signed-out account, a reached budget, a reported usage limit, or a failed turn becomes the reply, in plain words with the cause and reset time when the adapter reports one | service test per cause |
+| Deleting | deleting the conversation's quest deletes its hidden quests and `companion_threads` rows | service test |
+
+Limits to state when built: the companion's cost counts to its account and to usage reports under the quest's name, but not to the quest's own budget; a hidden quest is invisible to the owner, so a failure shows only as the reply above.
+
+Open: at most five Companions per message; a Companion's reply label `Model · Account`; no reply-to-a-reply.

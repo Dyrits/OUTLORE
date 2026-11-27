@@ -34,7 +34,7 @@ Fulfilled is the ending a quest reaches when the owner marks it done, and a thre
 Companion means the selected model doing the work, not a conversation or a distinct saved agent definition; selectors say Companion (model) to make this explicit.
 Craft and Ritual are the agreed names for the future automation interfaces.
 Waystones and Spoils remain mockup suggestions for devices and changes.
-An existing errand may contain legacy descendants; the name covers every child thread, including an aside, whose off-topic behavior stays distinct. The app, Chronicler's guide, the tool descriptions and the specifications say errand; code identifiers (`sideQuest`) and the stored mention token `@side-quest:` keep the old word, and dated records and the changelog keep what they were written with.
+An existing errand may contain legacy descendants; the name covers every child thread, including an aside, whose off-topic behavior stays distinct. The app, Chronicler's guide, the tool descriptions and the specifications say errand; code identifiers (`sideQuest`) and the stored mention token `#side-quest:` keep the old word, and dated records and the changelog keep what they were written with.
 
 ## Work
 
@@ -115,7 +115,7 @@ A link on the originating message that shows the quest or errand and opens its c
 _Avoid_: Sub-thread, thread link (a reply is a message, see Comment)
 
 **Mention**:
-A quest, errand, or realm the owner names with `@` in a message, as context for the thread that receives it.
+A realm, quest, or errand the owner names with `#` in a message, as context for the thread that receives it. A Companion named with `@` is a **Companion mention**: it asks that model to answer the one message (not built). Files are named with `+` and skills with `$`; those are not mentions.
 _Avoid_: Reference (the token's name in code), link, tag
 
 **Reach**:

@@ -1,15 +1,10 @@
-import { mkdirSync, realpathSync } from "node:fs";
+import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import {
-  type MissionId,
-  mentionReferencesOf,
-  mentionTokenOf,
-  mentionTokensOf,
-  type ThreadId,
-} from "@outlore/contracts";
+import { type MissionId, mentionReferencesOf, mentionTokenOf, pathTokensOf, type ThreadId } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
+import { pathNoteOf } from "../../src/work/mentions.ts";
 import { isIdle, lastAgentText } from "../fixtures/guildmaster.ts";
 import { call, fixture, open, read, send, settle, start, tool } from "../fixtures/service.ts";
 
@@ -98,14 +93,14 @@ describe("reading references in a message", () => {
   );
 
   it("reads quest, errand, and realm tokens once each, and leaves workspace paths alone", () => {
-    const text = "Ask @quest:1a-2b, then @side-quest:3c and @realm:4d; @quest:1a-2b again. Read @src/index.ts.";
+    const text = "Ask #quest:1a-2b, then #side-quest:3c and #realm:4d; #quest:1a-2b again. Read +src/index.ts.";
     expect(mentionReferencesOf(text)).toEqual([
       { id: "1a-2b", kind: "quest" },
       { id: "3c", kind: "side-quest" },
       { id: "4d", kind: "realm" },
     ]);
-    expect(mentionTokensOf(text).map((token) => token.path)).toContain("src/index.ts");
-    expect(mentionReferencesOf("@quest: and @quests:1 and @notes/quest:1")).toEqual([]);
+    expect(pathTokensOf(text).map((token) => token.path)).toContain("src/index.ts");
+    expect(mentionReferencesOf("#quest: and #quests:1 and #notes/quest:1 and @quest:1a")).toEqual([]);
   });
 });
 
@@ -345,4 +340,34 @@ describe("reaching a quest the owner mentioned", () => {
       }),
     ),
   );
+});
+
+describe("what the owner's $skill and +path words reach a thread as", () => {
+  it.live("delivers a $skill's instructions pointer and a +path's note with the message", () =>
+    withService((folder) =>
+      Effect.gen(function* () {
+        mkdirSync(join(folder, ".agents", "skills", "challenge"), { recursive: true });
+        writeFileSync(
+          join(folder, ".agents", "skills", "challenge", "SKILL.md"),
+          "---\nname: challenge\ndescription: Challenge a plan\n---\n",
+        );
+        const here = yield* startQuest("Release notes", folder);
+        // No slash in the text: the skills are looked for because of the `$`, not because of a path.
+        const skill = yield* say(here.missionId, here.threadId, "Run $challenge now");
+        expect(skill).toContain("- $challenge: read ");
+        expect(skill).toContain("SKILL.md and follow its instructions.");
+        const path = yield* say(here.missionId, here.threadId, "Open +src/index.ts");
+        expect(path).toContain("+src/index.ts = src/index.ts");
+      }),
+    ),
+  );
+});
+
+describe("telling a thread what a +path names", () => {
+  it("says each file or folder once, relative to the working folder, and is empty when there is none", () => {
+    expect(pathNoteOf("Compare +src/a.ts with +.gitignore and +src/a.ts, a + b")).toBe(
+      "\n\n[The owner named these files or folders with +, relative to your working folder: +src/a.ts = src/a.ts, +.gitignore = .gitignore.]",
+    );
+    expect(pathNoteOf("nothing named, 1 + 1")).toBe("");
+  });
 });

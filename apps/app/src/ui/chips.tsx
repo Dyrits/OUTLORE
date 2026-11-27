@@ -1,4 +1,4 @@
-import { mentionTokensOf, referenceOf, referenceTokensOf, type Skill, type WorkspaceEntry } from "@outlore/contracts";
+import { pathTokensOf, referenceTokensOf, type Skill, type WorkspaceEntry } from "@outlore/contracts";
 import { type ReactNode, useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
@@ -25,8 +25,11 @@ export const chipIcons = {
   file: { paths: ["M3.5 1.5 H9.5 L12.5 4.5 V14.5 H3.5 Z", "M9.5 1.5 V4.5 H12.5"], viewBox: "0 0 16 16" },
   folder: { paths: ["M1.5 3.5 H6 L7.5 5 H14.5 V13 H1.5 Z"], viewBox: "0 0 16 16" },
   quest: { paths: emblemPaths.sword, viewBox: "0 0 24 24" },
-  // A realm is written like a channel, so its mark is the hash that names it in a message.
-  realm: { paths: ["M9.5 3.5 7.5 20.5", "M16.5 3.5 14.5 20.5", "M4.5 9h16", "M3.5 15h16"], viewBox: "0 0 24 24" },
+  // A realm is a keep: a banner over a gate, as the chips drew it before CHG-0701 and draw it again from CHG-0777.
+  realm: {
+    paths: ["M3 5h18", "M12 2v3", "M5 5v12l7 5 7-5V5", "M8 8v7l4 3 4-3V8", "M12 9l1.5 3-1.5 2-1.5-2z"],
+    viewBox: "0 0 24 24",
+  },
   ritual: { paths: emblemPaths.moon, viewBox: "0 0 24 24" },
   skill: { paths: ["M2.5 5.5 H6 a1.5 1.5 0 0 1 3 0 H11.5 V8 a1.5 1.5 0 0 1 0 3 V13.5 H2.5 Z"], viewBox: "0 0 16 16" },
 } as const;
@@ -66,7 +69,7 @@ export function ChipIcon({
 /** What a path in a workspace is, or null when it is not there; known answers are kept while the app runs. */
 const kinds = new Map<string, WorkspaceEntry["kind"] | null>();
 
-/** Which of the `@`-paths name a file or a folder of the workspace; the others are plain text. */
+/** Which of the `+`-paths name a file or a folder of the workspace; the others are plain text. */
 function useMentionKinds(
   client: ServiceClient | undefined,
   workspacePath: string | null,
@@ -114,11 +117,10 @@ function useChipsOf({
   text: string;
   workspacePath: string | null;
 }) {
-  const tokens = mentionTokensOf(text);
   const entries = useMentionKinds(
     client,
     workspacePath,
-    tokens.filter((token) => referenceOf(token.path) === null).map((token) => token.path),
+    pathTokensOf(text).map((token) => token.path),
   );
   const mentionables = useMentionables(client, referenceTokensOf(text).length > 0);
   return chipsOf(text, { entries, mentionables, skills });

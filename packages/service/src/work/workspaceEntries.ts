@@ -76,7 +76,7 @@ const rankOf = (entry: WorkspaceEntry, query: string) => {
 };
 
 /**
- * The entries of the workspace folder that match what follows an `@`, best first; an empty query lists the top level.
+ * The entries of the workspace folder that match what follows a `+`, best first; an empty query lists the top level.
  * Refused for a path that is not an existing folder.
  */
 export const listWorkspaceEntries = Effect.fnUntraced(function* (workspacePath: string, query: string) {

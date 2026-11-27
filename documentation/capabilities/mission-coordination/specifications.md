@@ -72,7 +72,7 @@ The additional search and management operations still need design, implementatio
 
 ### References between quests
 
-- The owner references a quest, errand, or realm with `@` from any message box, Outlore's included, as [thread-messaging](../thread-messaging/specifications.md#mentions-with-) describes (CHG-0181, built in CHG-0182). For the turn it reaches, the receiving thread may read the mentioned quest's journal and message its top thread, or the mentioned errand; the message goes straight to it and the reply comes straight back, without Outlore. A mention is context: the thread decides from the owner's words whether to use it. A thread's own `@` in a message opens nothing.
+- The owner references a quest, errand, or realm with `#` from any message box, Outlore's included, as [thread-messaging](../thread-messaging/specifications.md#mentions-with-) describes (CHG-0181, built in CHG-0182). For the turn it reaches, the receiving thread may read the mentioned quest's journal and message its top thread, or the mentioned errand; the message goes straight to it and the reply comes straight back, without Outlore. A mention is context: the thread decides from the owner's words whether to use it. A thread's own `#` in a message opens nothing.
 - Without a reference, a thread, or the user writing in a quest's thread, can write to `@Guildmaster`. Guildmaster finds the quest that fits with `find_missions` and forwards the message there, or answers that none fits.
 - Every message between quests shows in both threads as a normal message labelled with the sender's quest. Guildmaster shows it as a compact event line, not a chat bubble, for example "Release notes › Draft → Read my emails › Triage", and it stays out of Guildmaster's context.
 - The [chatter guard](../thread-messaging/specifications.md#chatter-guard) applies to each pair of threads, across quests too.
@@ -142,7 +142,7 @@ The additional search and management tools for CHG-0132 need a contract and serv
   - the chatter guard pausing two threads in different quests;
   - Guildmaster's starting context: the dashboard as text, global intel, and its 20 latest messages, with older ones summarized and retrieved when needed;
   - Guildmaster saving global intel only after approval.
-- **Human acceptance**: on the desktop and on the phone web app, the user asks Guildmaster for 3 different tasks, sees one continue an existing quest and two proposed as new quests on different tiers, which the user opens from the cards, gets told in Guildmaster when one needs them, and has a thread in one quest ask a thread in another a question with `@`.
+- **Human acceptance**: on the desktop and on the phone web app, the user asks Guildmaster for 3 different tasks, sees one continue an existing quest and two proposed as new quests on different tiers, which the user opens from the cards, gets told in Guildmaster when one needs them, and has a thread in one quest ask a thread in another a question with `#`.
 
 ## Requirements
 
@@ -172,4 +172,4 @@ The additional search and management tools for CHG-0132 need a contract and serv
 - **A quest reports once its turn has ended**, so its closing reply travels with the report; a quest that stands in the same report is not told twice, and one that leaves it is told again later.
 - **Hiding Guild Hall** removes its rail entry and opens the window on the quests; the screen is still where a realm page's message goes.
 - **Tiers** are optional Companions; a tier not set, or no tier, starts on the Settings default, never on Guildmaster's own cheap Companion. Guildmaster's own Companion starts on Claude Code's cheapest model (Haiku) when the default harness is Claude Code, and on the harness's own default otherwise.
-- **Not built**: the 20-message window with older messages summarized (the harness session carries the conversation); the event lines in Guildmaster for messages between quests (the `@` references themselves are built, CHG-0182); Guildmaster's spending on the quests' dashboard (it shows on its own screen).
+- **Not built**: the 20-message window with older messages summarized (the harness session carries the conversation); the event lines in Guildmaster for messages between quests (the `#` references themselves are built, CHG-0182, moved from `@` in CHG-0777); Guildmaster's spending on the quests' dashboard (it shows on its own screen).

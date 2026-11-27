@@ -18,7 +18,7 @@ export const journalToolsOf = (
         // when the owner mentioned that quest, or one of its errands, in a message its current turn received.
         if (!(yield* mayReadJournal(threadId, mission)))
           return toolRefusal(
-            "Only Chronicler reads another quest's journal, unless the owner mentioned that quest with @ in a message of this turn.",
+            "Only Chronicler reads another quest's journal, unless the owner mentioned that quest with # in a message of this turn.",
           );
         const sql = yield* SqlClient.SqlClient;
         const rows = yield* sql<{ id: string }>`SELECT m.id FROM missions m JOIN threads top ON top.id = m.top_thread_id

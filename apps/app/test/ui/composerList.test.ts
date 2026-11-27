@@ -27,109 +27,125 @@ const source = (trigger: ListSource["trigger"], hasMentions = true): ListSource 
   skills,
   trigger,
 });
-const typed = (character: "/" | "@" | "#", query = ""): ListSource["trigger"] => ({ character, query });
+const typed = (character: "$" | "+" | "#" | "@", query = ""): ListSource["trigger"] => ({ character, query });
 const labelsOf = (rows: ReturnType<typeof composerListOf>["rows"]) =>
   rows.map((row) => (row.type === "option" ? row.chip.label : `${row.type}:${row.category}`));
 const press = (state: ListState, list: ReturnType<typeof composerListOf>, key: string, shiftKey = false) =>
   listAfterKey(state, list, { key, shiftKey });
 
-describe("the / list", () => {
+describe("the $ list", () => {
   it("offers the skills a typed word can be completed to, at most six", () => {
-    expect(labelsOf(composerListOf(source(typed("/", "arch")), initialListState).rows)).toEqual([
+    expect(labelsOf(composerListOf(source(typed("$", "arch")), initialListState).rows)).toEqual([
       "architect",
       "architecture",
     ]);
-    expect(composerListOf(source(typed("/")), initialListState).rows).toHaveLength(3);
+    expect(composerListOf(source(typed("$")), initialListState).rows).toHaveLength(3);
   });
 
-  it("turns a fully typed skill name into a chip with Tab, even without @ mentions", () => {
-    const list = composerListOf(source(typed("/", "review"), false), initialListState);
+  it("turns a fully typed skill name into a chip with Tab, even without # mentions", () => {
+    const list = composerListOf(source(typed("$", "review"), false), initialListState);
     expect(press(initialListState, list, "Tab")).toMatchObject({
-      chip: { kind: "skill", label: "review", token: "/review" },
+      chip: { kind: "skill", label: "review", token: "$review" },
       handled: true,
     });
-    expect(composerListOf(source(typed("/", "rev"), false), initialListState).rows).toHaveLength(1);
+    expect(composerListOf(source(typed("$", "rev"), false), initialListState).rows).toHaveLength(1);
   });
 
   it("highlights the exact skill before a longer name with the same prefix", () => {
     const list = composerListOf(
-      { ...source(typed("/", "ARCHITECT")), skills: [...skills].reverse() },
+      { ...source(typed("$", "ARCHITECT")), skills: [...skills].reverse() },
       initialListState,
     );
     expect(labelsOf(list.rows)).toEqual(["architect", "architecture"]);
     expect(press(initialListState, list, "Tab").chip).toEqual({
       kind: "skill",
       label: "architect",
-      token: "/architect",
+      token: "$architect",
     });
   });
 
-  it("offers nothing for an @ where @ names nothing, or with no trigger", () => {
-    expect(composerListOf(source(typed("@"), false), initialListState).rows).toEqual([]);
+  it("offers nothing for an @, which names no Companion yet, or with no trigger", () => {
+    expect(composerListOf(source(typed("@")), initialListState).rows).toEqual([]);
     expect(composerListOf(source(null), initialListState).rows).toEqual([]);
   });
 });
 
+describe("the + list", () => {
+  it("offers the workspace's entries and hands back a + chip with Tab", () => {
+    const list = composerListOf(source(typed("+", "s")), initialListState);
+    expect(labelsOf(list.rows)).toEqual(["src/"]);
+    expect(press(initialListState, list, "Tab").chip).toEqual({ kind: "folder", label: "src/", token: "+src/" });
+  });
+
+  it("offers nothing without a folder or where mentions are not offered", () => {
+    expect(composerListOf({ ...source(typed("+")), mentions: { hasFolder: false } }, initialListState).rows).toEqual(
+      [],
+    );
+    expect(composerListOf(source(typed("+"), false), initialListState).rows).toEqual([]);
+  });
+});
+
 describe("the # list", () => {
-  it("offers the realms at once, and hands back a #realm chip with Tab", () => {
+  it("offers the three categories for a bare #, with nothing inside a category yet", () => {
     const list = composerListOf(source(typed("#")), initialListState);
-    expect(labelsOf(list.rows)).toEqual(["outlore"]);
+    expect(labelsOf(list.rows)).toEqual(["category:realms", "category:quests", "category:errands"]);
     expect(list.isInCategory).toBe(false);
-    expect(press(initialListState, list, "Tab").chip).toEqual({ kind: "realm", label: "outlore", token: "#realm:r1" });
   });
 
   it("offers nothing for a # where mentions are not offered", () => {
     expect(composerListOf(source(typed("#"), false), initialListState).rows).toEqual([]);
   });
 
-  it("drops a category opened under an @ once the owner types a #", () => {
-    expect(listAfterTyping({ category: "quests", chosen: 1 }, typed("#"))).toEqual({ category: null, chosen: 0 });
+  it("drops a category opened under a # once the owner types a $", () => {
+    expect(listAfterTyping({ category: "quests", chosen: 1 }, typed("$"))).toEqual({ category: null, chosen: 0 });
   });
 });
 
-describe("the @ list across keystrokes", () => {
+describe("the # list across keystrokes", () => {
   it("opens a category with Enter, shows its items, and returns on Backspace", () => {
-    const bare = source(typed("@"));
+    const bare = source(typed("#"));
     const categories = composerListOf(bare, initialListState);
-    expect(labelsOf(categories.rows)).toEqual(["category:quests", "category:files"]);
-    const opened = press(initialListState, categories, "Enter");
-    expect(opened.handled).toBe(true);
-    expect(opened.chip).toBeNull();
-    expect(opened.state).toEqual({ category: "quests", chosen: 0 });
-    const inside = composerListOf(bare, opened.state);
+    expect(labelsOf(categories.rows)).toEqual(["category:realms", "category:quests", "category:errands"]);
+    const opened = press(initialListState, categories, "ArrowDown");
+    expect(opened.state.chosen).toBe(1);
+    const inQuests = press(opened.state, composerListOf(bare, opened.state), "Enter");
+    expect(inQuests.handled).toBe(true);
+    expect(inQuests.chip).toBeNull();
+    expect(inQuests.state).toEqual({ category: "quests", chosen: 0 });
+    const inside = composerListOf(bare, inQuests.state);
     expect(inside.isInCategory).toBe(true);
     expect(labelsOf(inside.rows)).toEqual(["Fix login"]);
-    const back = press(opened.state, inside, "Backspace");
+    const back = press(inQuests.state, inside, "Backspace");
     expect(back).toMatchObject({ chip: null, handled: true, state: { category: null, chosen: 0 } });
   });
 
   it("chooses an item with Tab and hands back its chip", () => {
     const state: ListState = { category: "quests", chosen: 0 };
-    const chosen = press(state, composerListOf(source(typed("@")), state), "Tab");
-    expect(chosen.chip).toEqual({ kind: "quest", label: "Fix login", token: "@quest:q1" });
+    const chosen = press(state, composerListOf(source(typed("#")), state), "Tab");
+    expect(chosen.chip).toEqual({ kind: "quest", label: "Fix login", token: "#quest:q1" });
     expect(chosen.handled).toBe(true);
   });
 
   it("moves with the arrows, wrapping at both ends", () => {
-    const list = composerListOf(source(typed("@")), initialListState);
+    const list = composerListOf(source(typed("#")), initialListState);
     const down = press(initialListState, list, "ArrowDown").state;
     expect(down.chosen).toBe(1);
-    expect(press({ ...down, chosen: 1 }, list, "ArrowDown").state.chosen).toBe(0);
-    expect(press(initialListState, list, "ArrowUp").state.chosen).toBe(1);
+    expect(press({ ...down, chosen: 2 }, list, "ArrowDown").state.chosen).toBe(0);
+    expect(press(initialListState, list, "ArrowUp").state.chosen).toBe(2);
   });
 
-  it("keeps the category only under a bare @, and goes back to the first line on any typing", () => {
-    const inside: ListState = { category: "files", chosen: 2 };
-    expect(listAfterTyping(inside, typed("@"))).toEqual({ category: "files", chosen: 0 });
-    expect(listAfterTyping(inside, typed("@", "s"))).toEqual({ category: null, chosen: 0 });
-    expect(listAfterTyping(inside, typed("/"))).toEqual({ category: null, chosen: 0 });
+  it("keeps the category only under a bare #, and goes back to the first line on any typing", () => {
+    const inside: ListState = { category: "realms", chosen: 2 };
+    expect(listAfterTyping(inside, typed("#"))).toEqual({ category: "realms", chosen: 0 });
+    expect(listAfterTyping(inside, typed("#", "s"))).toEqual({ category: null, chosen: 0 });
+    expect(listAfterTyping(inside, typed("$"))).toEqual({ category: null, chosen: 0 });
     expect(listAfterTyping(inside, null)).toEqual({ category: null, chosen: 0 });
   });
 
   it("leaves Enter to the field when there is no list, and Shift+Enter always", () => {
     const none = composerListOf(source(null), initialListState);
     expect(press(initialListState, none, "Enter")).toMatchObject({ chip: null, handled: false });
-    const list = composerListOf(source(typed("@")), initialListState);
+    const list = composerListOf(source(typed("#")), initialListState);
     expect(press(initialListState, list, "Enter", true).handled).toBe(false);
   });
 });

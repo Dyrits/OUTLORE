@@ -79,7 +79,7 @@ export const errandToolDefinitions = {
         }),
       ),
       mission: optionalText(
-        "The id of another quest whose journal to read: Chronicler reads any; another thread only one the owner mentioned with @ in this turn.",
+        "The id of another quest whose journal to read: Chronicler reads any; another thread only one the owner mentioned with # in this turn.",
       ),
     }),
   }),
@@ -136,7 +136,7 @@ export const errandToolDefinitions = {
   }),
   send_thread_message: definitionOf({
     description:
-      "Send a message to your parent thread or to a thread directly beneath you, by its id. Any thread may also message Chronicler by its id, to ask it to find the right quest, and Chronicler may message any quest's top thread. During a turn, you may also message the top thread of a quest, or an errand, the owner mentioned with @ in a message of that turn, and answer a thread that wrote to you in it. It joins that thread's current turn if it is running, and wakes it if it is idle.",
+      "Send a message to your parent thread or to a thread directly beneath you, by its id. Any thread may also message Chronicler by its id, to ask it to find the right quest, and Chronicler may message any quest's top thread. During a turn, you may also message the top thread of a quest, or an errand, the owner mentioned with # in a message of that turn, and answer a thread that wrote to you in it. It joins that thread's current turn if it is running, and wakes it if it is idle.",
     invalid: toolRefusal("Invalid arguments: give to and text."),
     isUnasked: true,
     schema: Schema.Struct({

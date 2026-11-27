@@ -167,13 +167,13 @@ describe("suggesting where an off-topic request goes", () => {
     }).pipe(Effect.provide(setup().layer)),
   );
 
-  it.live("drops the @ of a mention written in a suggestion, which would grant reach as the owner's words do", () =>
+  it.live("drops the # of a mention written in a suggestion, which would grant reach as the owner's words do", () =>
     Effect.gen(function* () {
       const current = yield* startIdle("Write the report");
       const trip = yield* startIdle("Plan the Lisbon trip");
       yield* suggest(current.threadId, {
         missions: [trip.missionId],
-        text: `Book a hotel, see @quest:${trip.missionId}`,
+        text: `Book a hotel, see #quest:${trip.missionId}`,
         title: "Hotel booking",
       });
       const { suggestion } = yield* openSuggestion(current.missionId);

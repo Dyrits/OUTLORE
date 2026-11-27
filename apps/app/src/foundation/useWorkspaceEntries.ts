@@ -4,7 +4,7 @@ import type { ServiceClient } from "./client";
 
 const none: ReadonlyArray<WorkspaceEntry> = [];
 
-/** The files and folders of a workspace that match what follows a typed `@`; none outside a workspace or with no `@`. */
+/** The files and folders of a workspace that match what follows a typed `+`; none outside a workspace or with no `+`. */
 export function useWorkspaceEntries(
   client: ServiceClient | undefined,
   workspacePath: string | null,

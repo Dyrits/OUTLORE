@@ -1,19 +1,23 @@
+import { isMarkCharacter, type MarkCharacter, typedMarkPattern } from "@outlore/contracts";
 import type { Ref } from "react";
 import type { ChipKind } from "./chips";
 
 // What the message box's text field offers the composer, whether it can draw chips inside its text (web) or not.
 
-/** A skill or workspace path chosen from a list: how it reads in the message and how it shows as a chip. */
+/** A skill, workspace path, quest, errand, or realm chosen from a list: how it reads in the message and how it shows as a chip. */
 export type Chip = {
   readonly kind: ChipKind;
   readonly label: string;
-  /** What the message holds in its place, such as `/architect` or `@src/`. */
+  /** What the message holds in its place, such as `$architect`, `+src/`, or `#realm:<id>`. */
   readonly token: string;
 };
 
-/** The `/`, `@`, or `#` the owner typed at the start of a word just before the caret, with the text after it, as the field reports it. */
+/** The mark that opens a list: the character of one of the message marks (`$`, `+`, `#`, `@`), as the contracts define them. */
+export type TriggerMark = MarkCharacter;
+
+/** The mark the owner typed at the start of a word just before the caret, with the text after it, as the field reports it. */
 export type Trigger = {
-  readonly character: "/" | "@" | "#";
+  readonly character: TriggerMark;
   readonly query: string;
 };
 
@@ -41,12 +45,13 @@ export type ChipEditorProps = {
   ref?: Ref<ChipEditorHandle>;
 };
 
-/** The trigger a matched character is; anything but `@` and `#` is the `/` of a skill. */
-export const triggerCharacterOf = (character: string | undefined): Trigger["character"] =>
-  character === "@" || character === "#" ? character : "/";
+/** How many characters of the text the trigger takes: its mark and what follows it. */
+export const triggerLengthOf = (trigger: Trigger) => trigger.character.length + trigger.query.length;
 
-/** The trigger a text ends with, for a field that has no caret to read. */
+/** The trigger a text ends with, or the text before a caret; null when the last word starts with no mark. */
 export const triggerOfEnd = (text: string): Trigger | null => {
-  const match = /(^|\s)([/@#])(\S*)$/.exec(text);
-  return match === null ? null : { character: triggerCharacterOf(match[2]), query: match[3] ?? "" };
+  const match = typedMarkPattern.exec(text);
+  const character = match?.[2];
+  if (character === undefined || !isMarkCharacter(character)) return null;
+  return { character, query: match?.[3] ?? "" };
 };

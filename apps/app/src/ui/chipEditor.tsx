@@ -3,7 +3,7 @@ import { TextInput } from "react-native";
 import { spacedTranscriptOf } from "../dictation/dictation";
 import { styles } from "../foundation/styles";
 import { colors } from "../foundation/theme";
-import { type ChipEditorProps, triggerOfEnd } from "./chipEditorTypes";
+import { type ChipEditorProps, triggerLengthOf, triggerOfEnd } from "./chipEditorTypes";
 
 /** The message box's text field where chips cannot be drawn inside the text: a chosen skill or path is written into it as its token. */
 export function ChipEditor({ initialText = "", onChange, onKeyDown, placeholder, ref }: ChipEditorProps) {
@@ -16,7 +16,7 @@ export function ChipEditor({ initialText = "", onChange, onKeyDown, placeholder,
     clear: () => change(""),
     insertChip: (chip) => {
       const typed = triggerOfEnd(text);
-      change(`${text.slice(0, text.length - (typed === null ? 0 : typed.query.length + 1))}${chip.token} `);
+      change(`${text.slice(0, text.length - (typed === null ? 0 : triggerLengthOf(typed)))}${chip.token} `);
     },
     // The field reports no caret, so the words go at the end.
     insertText: (spoken) => change(`${text}${spacedTranscriptOf(text, "", spoken)}`),

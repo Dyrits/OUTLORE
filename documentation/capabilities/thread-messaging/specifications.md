@@ -11,22 +11,42 @@ Subagents in today's harnesses report once at the end and cannot be asked or red
 ### Who can message whom
 
 - A thread can message its parent and the threads directly beneath it. Siblings reach each other through their parent.
-- When the owner mentions a quest or errand with `@` in a message, the thread that receives it may, for the turn that message reaches, read that quest's journal (`read_journal` with `mission`) and message the quest's top thread, or the errand itself (CHG-0181). The receiving thread decides from the owner's words whether to do either. The quest that receives such a message may answer its sender in the turn the message reaches, so the reply comes straight back (see [mission-coordination](../mission-coordination/specifications.md#references-between-quests)).
-- Without a mention, a thread reaches another quest only through Chronicler (formerly Guildmaster). A thread cannot widen its own reach by writing an `@` reference: only the owner's messages count.
+- When the owner mentions a quest or errand with `#` in a message, the thread that receives it may, for the turn that message reaches, read that quest's journal (`read_journal` with `mission`) and message the quest's top thread, or the errand itself (CHG-0181). The receiving thread decides from the owner's words whether to do either. The quest that receives such a message may answer its sender in the turn the message reaches, so the reply comes straight back (see [mission-coordination](../mission-coordination/specifications.md#references-between-quests)).
+- Without a mention, a thread reaches another quest only through Chronicler (formerly Guildmaster). A thread cannot widen its own reach by writing a `#` reference: only the owner's messages count.
 - A Ritual's run instruction is a service-made message, not a live owner message; its mentions grant no reach.
 - The user can write to any open thread, including a subagent's (for mirrored subagents, see [thread-tree](../thread-tree/specifications.md#subagents)).
 - Every message shows its sender: the user, or the sending thread.
 
-### Mentions with @
+### Mentions with #
 
-Agreed 2026-11-11 (CHG-0181); built in CHG-0182.
+Agreed 2026-11-11 (CHG-0181, with `@`; built in CHG-0182); moved to `#` on 2026-11-27 (CHG-0777), when `@` was kept for Companions (below), `+` for files and `$` for skills.
 
-- In any message box (a quest's, an errand's, Outlore's), a bare `@` lists three categories with their icons: Quests, Realms, and Files & Directories, the last only when the message box has a linked folder. Arrow keys and Enter open a category; Backspace right after the `@` returns to the categories. As soon as text follows the `@`, the list mixes the matches of every category, each under its heading. The `/` skills list is unchanged.
-- Quests lists every quest not archived and, beneath each, its errands shown as `Quest › Errand`; Chronicler's own conversation is never offered. Realms lists every realm, tied to a folder or not. Archived quests and their errands are left out entirely.
-- A chosen quest, errand, or realm becomes a chip with its icon (a pennant for a quest or errand, a keep for a realm) and its name, in the message box and in the sent message. The message holds a one-word token with the id: `@quest:<quest id>`, `@side-quest:<thread id>`, or `@realm:<realm id>`. File and folder paths keep their `@path` form. A token naming a quest since archived or deleted shows as "quest no longer open".
+- In any message box (a quest's, an errand's, Outlore's), a bare `#` lists three categories with their icons: Realms (a keep), Quests (a sword), and Errands (a branch). Arrow keys and Enter open a category; Backspace right after the `#` returns to the categories. As soon as text follows the `#`, the list mixes the matches of every category, each under its heading. `#` is offered wherever the message box can offer a mention, with or without a linked folder.
+- Realms lists every realm, tied to a folder or not. Quests lists every quest not archived; Errands lists the errands of those quests, shown as `Quest › Errand`. Chronicler's own conversation is never offered. Archived quests and their errands are left out entirely.
+- A chosen realm, quest, or errand becomes a chip with its icon and its name, in the message box and in the sent message. The message holds a one-word token with the id: `#realm:<realm id>`, `#quest:<quest id>`, or `#side-quest:<thread id>`. A token naming a quest since archived or deleted shows as "quest no longer open".
 - A mention is context only. The owner's text reaches the thread unchanged, followed by a block the service adds as it delivers the message, one line per mention with its ids, for example `Quest "Fix login" (id …, state Running, realm Outlore, top thread id …)` and `Realm "Outlore" (id …, folder …)`. The receiving thread decides from the owner's words whether to read the quest's journal, write to it, or neither.
 - The widened reach (above) holds only for quests and errands the owner named, only in the turn the message reaches, and never for an archived quest. A realm mention opens nothing: it only says which realm is meant.
+- **Old words are plain text** (owner, 2026-11-27): a message stored before CHG-0777 with `@quest:<id>`, `@side-quest:<id>`, `@realm:<id>`, or an `@path` shows those words as typed and grants no reach; only `#` words are read. A thread's own `#` word in a message it writes (a suggestion's text, for one) loses its `#`, as its `@` did.
 - On the phone and other builds that cannot draw chips inside the text, the chosen token is written into the text as typed; the categories still show.
+
+### Files with + and skills with $
+
+Agreed 2026-11-27 (CHG-0777). The `+` list was `@`'s files category, and the `$` list was the `/` skills list; their behavior is otherwise unchanged ([workspace-attachment](../workspace-attachment/specifications.md#naming-files-and-folders-with-), [tool-and-skill-loading](../tool-and-skill-loading/specifications.md)).
+
+- Typing `+` at the start of a word lists the files and folders of the message's linked folder; with no linked folder it offers nothing. A chosen path is written `+<path>` and shows as a chip; `./` was tried first and replaced the same day because root files such as `.gitignore` read badly after it (owner, 2026-11-27). A `/` at the start of a word no longer opens anything, so a path such as `/Users/me` is plain text, and the slash is free for commands.
+- Typing `$` at the start of a word lists the skills; a chosen skill is written `$name`, shows as a chip with a puzzle piece, and the service appends its path and an instruction to read it. A `$` word that names no skill (`$5`) is plain text. A message stored with `/name` is plain text and appends nothing.
+
+### Mentioning a Companion with @
+
+Agreed in outline 2026-11-27 (CHG-0777); **not built** (see the [blueprint](blueprint.md#mentioning-a-companion-with-)).
+
+- Typing `@` at the start of a word shows a **Companion** category; opening it lists the models of every signed-in account, one row per account, each naming its model and, in its description, its harness and account, narrowed by what follows (`@gpt` searches). Text after `@` shows the matching models at once under a Companion heading.
+- A chosen model is a chip in the message. When the message is sent, **that model answers it, in the same conversation** (owner, 2026-11-27; not as an errand: an errand does not open an errand). The reply is a message from the mentioned Companion, shown with its model's name.
+- **Only that message.** The main Companion neither changes nor answers it: it keeps operating the other messages, with its own harness, model, and effort. **The main Companion sees the message and the answer as context only** (owner, 2026-11-27): it is told they exist, and does not reply to them.
+- A message that mentions several models is answered by each, in the order of their chips. An `@` that follows a model chip or an `@` word that names no model is plain text.
+- **Settled by the owner, 2026-11-27:** the mentioned model works in the thread's folder with the thread's permission mode, its asks going through the same approval flow; **one hidden session per model per conversation** is kept and resumed, so a second `@gpt` remembers the first, and a resumed session lets the provider's prompt cache serve the earlier conversation while it is warm (its lifetime is the provider's, minutes to an hour), where a fresh session each time would send the whole history again.
+- **A model that cannot answer says so, clearly** (owner, 2026-11-27): when the account is signed out, over its budget, or out of quota, or the turn fails, the reply is that Companion's own answer in the conversation, in plain words with the cause and, when known, when it resets, for example "Claude Opus 5.5 · Work cannot answer: its usage limit is reached (resets at 14:00)". The message is not silently given to the main Companion to answer; it is context for it only, as any Companion mention is. The owner sends it again, or chooses another model.
+- Still recommended, not yet settled: a mention in Chronicler's conversation or a Ritual's run opens nothing; the label under the reply reads `Model · Account`; the owner replies to a Companion's answer by mentioning again, not by replying to it; at most five Companions answer one message.
 
 ### Comments on messages
 
@@ -86,7 +106,7 @@ Threads use these thread tools (see [0005](../../architecture-decision-record/00
 ## Acceptance and validation
 
 - **Automated, with a fake harness**:
-  - messages to the parent and to threads beneath, and the refusal for siblings and threads farther away unless the owner mentioned them with `@` in the current turn;
+  - messages to the parent and to threads beneath, and the refusal for siblings and threads farther away unless the owner mentioned them with `#` in the current turn;
   - a mentioned quest in another mission receiving a message and replying directly; the access ending with the turn; no access for an archived quest (built, `packages/service/test/work/mentions.test.ts`);
   - delivery into a running turn and at the next turn, for harnesses with and without mid-turn input;
   - steering and queuing user messages;
@@ -109,6 +129,6 @@ Threads use these thread tools (see [0005](../../architecture-decision-record/00
 ## Exclusions
 
 - Messages between threads in different missions without the owner's mention or Outlore.
-- A thread's own `@` reference in a message to another thread: it opens nothing (CHG-0181).
+- A thread's own `#` reference in a message to another thread: it opens nothing (CHG-0181).
 - Attachments other than text between threads. The owner's images are in [message-attachments](../message-attachments/specifications.md).
 - Editing or deleting a sent message.

@@ -42,7 +42,7 @@ The Workshop (Settings) is not a pane and not a sheet: it is the page that takes
 - The Chronicle's **History** tab shows routine events such as quest openings and moves. General requests go to Chronicler in the realm or Borderlands chat. The existing phone access remains while phone navigation is deferred.
 - Chronicle puts **Quest**, **Errand**, or **Realm** before the source title in Attention and History.
 - **A realm is a channel**: it has its own main conversation, opened from the sidebar, in which the realm's quests unfold. The Borderlands is one more channel, for the quests in no realm. In a channel the owner talks to Chronicler, scoped to that channel: it has the memory of the realm (its lore); in the Borderlands it has the global memories only. As elsewhere in Outlore, the owner chooses its Companion, so the model is settable for each channel.
-- `#` to name a channel is not built. `@` keeps naming a quest, an errand, a realm or a file as context; telling a citation from a channel reference waits for multiplayer (the owner).
+- `#` names a realm, a quest or an errand as context (CHG-0777), files are named with `+`, skills with `$`, and `@` is for mentioning a Companion; mentioning a person waits for multiplayer (the owner).
 
 ### The three levels
 

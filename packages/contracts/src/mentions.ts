@@ -1,15 +1,15 @@
 import { Schema } from "effect";
-import { type MentionToken, mentionTokensOf } from "./workspaceEntries.ts";
+import { markedWordOf, mentionKinds, referenceTokensOf } from "./marks.ts";
 
-// What a typed `@` in a message can name besides a workspace's files and folders: a quest or an errand, and what a
-// typed `#` names: a realm (thread-messaging, Who can message whom; CHG-0181). A mention is context only: the receiving
-// thread decides from the owner's words whether to read the item or message it.
+// What a typed `#` in a message can name: a realm, a quest, or an errand (thread-messaging, Who can message whom;
+// CHG-0181, and CHG-0777 for the move from `@` to `#`). A mention is context only: the receiving thread decides from the
+// owner's words whether to read the item or message it.
 
 /** The kinds of thing a reference names; an errand is a thread beneath a quest's top thread. */
-export const MentionKind = Schema.Literals(["quest", "side-quest", "realm"]);
+export const MentionKind = Schema.Literals(mentionKinds);
 export type MentionKind = typeof MentionKind.Type;
 
-/** One quest, errand, or realm the `@` and `#` menus offer; archived quests and their errands are never offered. */
+/** One quest, errand, or realm the `#` menu offers; archived quests and their errands are never offered. */
 export const Mentionable = Schema.Struct({
   /** What the chip and the menu add after the name: a quest's realm, or a realm's folder; null for neither. */
   detail: Schema.NullOr(Schema.String),
@@ -21,46 +21,29 @@ export const Mentionable = Schema.Struct({
 });
 export type Mentionable = typeof Mentionable.Type;
 
-/** A reference to a quest, errand, or realm as the message holds it, without its leading `@` or `#`. */
+/** A reference to a quest, errand, or realm as the message holds it, without its leading `#`. */
 export type MentionReference = {
   readonly id: string;
   readonly kind: MentionKind;
 };
 
 /**
- * The token a reference is written as in the message: `@quest:<id>`, `@side-quest:<thread id>`, or `#realm:<id>`. It is
- * one word, so it survives the `@`-word reading of file paths, and it carries the id, since titles have spaces and change.
+ * The token a reference is written as in the message: `#quest:<id>`, `#side-quest:<thread id>`, or `#realm:<id>`. It is
+ * one word, and it carries the id, since titles have spaces and change. Messages written before CHG-0777 held `@quest:`
+ * and `@side-quest:` words and `@`-paths; they are no longer read as mentions.
  */
 export const mentionTokenOf = (reference: MentionReference) =>
-  `${reference.kind === "realm" ? "#" : "@"}${reference.kind}:${reference.id}`;
+  markedWordOf("mention", `${reference.kind}:${reference.id}`);
 
-const mentionKinds: ReadonlyArray<MentionKind> = ["quest", "side-quest", "realm"];
 const referencePattern = /^(quest|side-quest|realm):([A-Za-z0-9-]+)$/;
 
-/** The reference a word stands for, without its `@` or `#`, or null for a workspace path or any other word. */
+/** The reference a word stands for, without its `#`, or null for any other word. */
 export const referenceOf = (path: string): MentionReference | null => {
   const match = referencePattern.exec(path);
   const kind = mentionKinds.find((each) => each === match?.[1]);
   if (match === null || kind === undefined) return null;
   return { id: match[2] ?? "", kind };
 };
-
-/**
- * The `#realm:<id>` words in a message: the position of each `#`, and the reference without it. A realm was written
- * `@realm:<id>` before `#` named realms; that older word is still read, as an `@`-word.
- */
-export const realmTokensOf = (text: string): ReadonlyArray<MentionToken> =>
-  Array.from(text.matchAll(/(^|\s)#(realm:[A-Za-z0-9-]+)/g), (match) => {
-    const path = match[2] ?? "";
-    const start = (match.index ?? 0) + (match[1] ?? "").length;
-    return { end: start + 1 + path.length, path, start };
-  });
-
-/** The words that name a quest, errand, or realm, in order: `@` ones, the older `@realm:` ones, and `#realm:` ones. */
-export const referenceTokensOf = (text: string): ReadonlyArray<MentionToken> =>
-  [...mentionTokensOf(text).filter((token) => referenceOf(token.path) !== null), ...realmTokensOf(text)].sort(
-    (first, second) => first.start - second.start,
-  );
 
 /** The quest, errand, and realm references in a message, in order, each once. */
 export const mentionReferencesOf = (text: string): ReadonlyArray<MentionReference> => {

@@ -1,5 +1,16 @@
 # Work in progress
 
+## Message marks have one definition · 2026-11-27 · built and tested; uncommitted
+
+CHG-0778 in `0.2.10-Pre-Alpha` (architecture audit candidate 3): `packages/contracts/src/marks.ts` is the table of `#`, `+`, `$` and the reserved `@` (character, chip kinds, delivery heading, reach, token words); the token grammar, the composer trigger and its list per mark, the delivery notes and the filter on thread-written words all read it. Left uncommitted in the main checkout beside other sessions' work.
+Next: a Companion mention adds a `companion` row (token, chip kind, list) instead of touching six places; `appGuideTopics.ts` still spells the four characters itself and can read the table.
+
+## Message marks: `#`, `+`, `$`, `@` · 2026-11-27 · triggers built and tested; Companion mention designed, not built
+
+CHG-0777 in `0.2.10-Pre-Alpha`: `#` names a realm, quest or errand (three categories; `#realm:`, `#quest:`, `#side-quest:` words), `+` names files and folders, `$` names skills, `/` opens nothing, and the realm chip is the old keep icon again; old `@` and `/` words are plain text and grant no reach (owner's choice). `@` offers nothing yet.
+The Companion mention (a model chosen with `@` answers one message in the same conversation; the main Companion sees both as context) is specified and has a [blueprint](capabilities/thread-messaging/blueprint.md#mentioning-a-companion-with-): a thread has one turn, process and session keyed by its thread id, so the recommended build is a hidden companion thread.
+Owner settled folder and permission mode, one resumed session per model per conversation, and a plain out-of-quota answer. Next: build it in its own worktree once the API-key batch is committed (migration, `is_companion` in about 35 list queries, reply copy, context-only delivery, `ListCompanions`); check `+`, `$`, `#` and the keep icon in the desktop window and on the phone.
+
 ## API key accounts and endpoint providers · 2026-11-27 · Standards refactors verified; 7 Specifications findings open
 
 CHG-0775 in `0.2.10-Pre-Alpha` (ADR 0029, requirement amended): a harness card offers **+ Add API key account** for Anthropic's API, Z.ai, Kimi, DeepSeek, MiniMax, Qwen and OpenRouter, run by Claude Code against each vendor's Anthropic-compatible endpoint; the key is sealed in the Vault and held only as an in-memory environment (`harness/accountKeys.ts`, `work/accountKeys.ts`, `work/keyAccounts.ts`, `keyAccountForm.tsx`, `providerRules.ts`). Uncommitted on `main`.

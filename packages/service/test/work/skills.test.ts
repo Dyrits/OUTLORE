@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
-import { mentionTokensOf, skillTokensOf } from "@outlore/contracts";
+import { pathTokensOf, skillTokensOf } from "@outlore/contracts";
 import { Effect } from "effect";
 import { afterEach } from "vitest";
 import { addSkillInstructions, listSkills } from "../../src/work/skills.ts";
@@ -56,24 +56,26 @@ describe("discovering skills", () => {
   );
 });
 
-describe("reading slash-names in messages", () => {
-  it("finds a name that starts a word and ignores paths", () => {
-    expect(skillTokensOf("Use /challenge, then open /Users/me/file").map((token) => token.name)).toEqual(["challenge"]);
+describe("reading $-names in messages", () => {
+  it("finds a name that starts a word and ignores paths and slash-names", () => {
+    expect(skillTokensOf("Use $challenge, then open /Users/me/file or /challenge").map((token) => token.name)).toEqual([
+      "challenge",
+    ]);
   });
 
   it("points a named skill to its instructions and leaves other messages unchanged", () => {
     const skills = [{ description: "", name: "challenge", path: "/s/challenge/SKILL.md" }];
-    expect(addSkillInstructions("Run /challenge now", skills)).toContain("read /s/challenge/SKILL.md");
-    expect(addSkillInstructions("Run /unknown now", skills)).toBe("Run /unknown now");
+    expect(addSkillInstructions("Run $challenge now", skills)).toContain("read /s/challenge/SKILL.md");
+    expect(addSkillInstructions("Run $unknown now", skills)).toBe("Run $unknown now");
   });
 });
 
-describe("reading @-paths in messages", () => {
+describe("reading +-paths in messages", () => {
   it("finds a path that starts a word, without closing punctuation, and ignores addresses", () => {
     expect(
-      mentionTokensOf("Read @src/index.ts, then @docs/ and mail me@example.com or @README.md.").map(
-        (token) => token.path,
-      ),
-    ).toEqual(["src/index.ts", "docs/", "README.md"]);
+      pathTokensOf(
+        "Read +src/index.ts, then +docs/ and mail me@example.com or +README.md or +.gitignore or a + b.",
+      ).map((token) => token.path),
+    ).toEqual(["src/index.ts", "docs/", "README.md", ".gitignore"]);
   });
 });

@@ -1,4 +1,4 @@
-import type { Skill } from "@outlore/contracts";
+import { markNameOf, type Skill } from "@outlore/contracts";
 import { useState } from "react";
 import type { ServiceClient } from "../foundation/client";
 import { useMentionables } from "../foundation/useMentionables";
@@ -24,10 +24,11 @@ export function useComposerList(
 ) {
   const [trigger, setTrigger] = useState<Trigger | null>(null);
   const [state, setState] = useState<ListState>(initialListState);
-  const mentioned = mentions === undefined || trigger?.character !== "@" ? null : trigger.query;
-  const isRealm = mentions !== undefined && trigger?.character === "#";
-  const entries = useWorkspaceEntries(mentions?.client, mentions?.workspacePath ?? null, mentioned);
-  const mentionables = useMentionables(mentions?.client, mentioned !== null || isRealm);
+  const mark = trigger === null ? null : markNameOf(trigger.character);
+  const typedPath = mentions === undefined || mark !== "path" ? null : (trigger?.query ?? null);
+  const isReference = mentions !== undefined && mark === "mention";
+  const entries = useWorkspaceEntries(mentions?.client, mentions?.workspacePath ?? null, typedPath);
+  const mentionables = useMentionables(mentions?.client, isReference);
   const list = composerListOf(
     {
       entries,

@@ -1,8 +1,9 @@
 import { Schema } from "effect";
+import { skillWordsOf } from "./marks.ts";
 
-// Skills the owner can name in a message with a slash (tool-and-skill-loading).
+// Skills the owner can name in a message with a dollar sign (tool-and-skill-loading; a slash before CHG-0777).
 
-/** A skill found in a skill folder: the name after the slash, what it is for, and where its instructions are. */
+/** A skill found in a skill folder: the name after the dollar sign, what it is for, and where its instructions are. */
 export const Skill = Schema.Struct({
   description: Schema.String,
   name: Schema.String,
@@ -11,17 +12,13 @@ export const Skill = Schema.Struct({
 });
 export type Skill = typeof Skill.Type;
 
-/** A slash-name in a message: its position in the text and the name without the slash. */
+/** A `$`-name in a message: its position in the text, starting at the `$`, and the name without it. */
 export type SkillToken = {
   readonly end: number;
   readonly name: string;
   readonly start: number;
 };
 
-/** The slash-names in a message: a slash starting a word, then a name that ends the word, so a path such as /Users/me is not one. */
+/** The `$`-names in a message: a `$` starting a word, then a name that ends the word, so an amount such as $5.50 is not a skill. */
 export const skillTokensOf = (text: string): ReadonlyArray<SkillToken> =>
-  Array.from(text.matchAll(/(^|\s)\/([A-Za-z0-9][\w:.-]*?)(?=[.,;:!?]*(?:\s|$))/g), (match) => {
-    const name = match[2] ?? "";
-    const start = (match.index ?? 0) + (match[1] ?? "").length;
-    return { end: start + 1 + name.length, name, start };
-  });
+  skillWordsOf(text).map((token) => ({ end: token.end, name: token.path, start: token.start }));

@@ -1,4 +1,4 @@
-import type { Suggestion, SuggestionAnswer } from "@outlore/contracts";
+import { type Suggestion, type SuggestionAnswer, withoutReachMarks } from "@outlore/contracts";
 import { Clock, Context, Effect, Layer } from "effect";
 import { SqlClient, type SqlError } from "effect/sql";
 import { Changes, invalid, notFound, readSettings, type ServiceFailure, toolText } from "../core/index.ts";
@@ -151,9 +151,9 @@ export const suggestionsLayer = Layer.effect(
     const suggest = Effect.fnUntraced(
       function* (threadId: string, args: ArgumentsOf<"suggest_mission">) {
         const { missions = [], title } = args;
-        // The thread wrote this text, and it is later stored as the owner's own words: an `@` mention in it must not
-        // grant reach as the owner's would (audit SA-06), so the `@` of a reference token is dropped.
-        const text = args.text.replace(/@(?=(?:quest|errand|realm):)/g, "");
+        // The thread wrote this text, and it is later stored as the owner's own words: a mention in it must not
+        // grant reach as the owner's would (audit SA-06), so the mark of a reference token is dropped.
+        const text = withoutReachMarks(args.text);
         const [caller] = yield* sql<{
           channel: string | null;
           isGuildmaster: number;

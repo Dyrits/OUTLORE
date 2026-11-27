@@ -5,7 +5,8 @@ import {
   type MentionToken,
   mentionLabelOf,
   mentionTokenOf,
-  mentionTokensOf,
+  messageMarks,
+  pathTokensOf,
   referenceOf,
   referenceTokensOf,
   type Skill,
@@ -17,10 +18,10 @@ import type { ChipKind } from "./chips";
 
 // Where the chips of a sent message sit in its text, kept apart from the drawing so it can be checked without a screen.
 
-/** The icon each kind of mention draws. */
+/** The icon each kind of mention draws, drawn from the kinds the `#` mark declares (`messageMarks.mention.chipKinds`). */
 const chipKinds = { quest: "quest", realm: "realm", "side-quest": "errand" } as const satisfies Record<
   MentionKind,
-  ChipKind
+  (typeof messageMarks.mention.chipKinds)[number]
 >;
 
 /** The chip a quest, errand, or realm is as a choice in the list and in the message: its icon, label, and token. */
@@ -30,7 +31,7 @@ export const chipOfMentionable = (mentionable: Mentionable): Chip => ({
   token: mentionTokenOf(mentionable),
 });
 
-/** Where a chip sits in a text, from its `/`, `@`, or `#` to the end of its token, and what it draws. */
+/** Where a chip sits in a text, from its `$`, `+`, or `#` to the end of its token, and what it draws. */
 type ChipPlace = {
   readonly end: number;
   readonly kind: ChipKind;
@@ -40,7 +41,7 @@ type ChipPlace = {
 
 /** What a text's chips are drawn from; `mentionables` is null while the quests and realms load. */
 type ChipSource = {
-  /** What each `@`-path names in the workspace; a path missing here is plain text. */
+  /** What each `+`-path names in the workspace; a path missing here is plain text. */
   readonly entries: ReadonlyMap<string, WorkspaceEntry["kind"]>;
   readonly mentionables: ReadonlyArray<Mentionable> | null;
   readonly skills: ReadonlyArray<Skill>;
@@ -59,7 +60,12 @@ export const chipsOf = (text: string, source: ChipSource): ReadonlyArray<ChipPla
   [
     ...skillTokensOf(text)
       .filter((token) => source.skills.some((skill) => skill.name === token.name))
-      .map((token) => ({ end: token.end, kind: "skill" as const, label: token.name, start: token.start })),
+      .map((token) => ({
+        end: token.end,
+        kind: messageMarks.skill.chipKinds[0],
+        label: token.name,
+        start: token.start,
+      })),
     ...referenceTokensOf(text).flatMap((token: MentionToken): ReadonlyArray<ChipPlace> => {
       const reference = referenceOf(token.path);
       return reference === null
@@ -73,8 +79,7 @@ export const chipsOf = (text: string, source: ChipSource): ReadonlyArray<ChipPla
             },
           ];
     }),
-    ...mentionTokensOf(text).flatMap((token: MentionToken): ReadonlyArray<ChipPlace> => {
-      if (referenceOf(token.path) !== null) return [];
+    ...pathTokensOf(text).flatMap((token: MentionToken): ReadonlyArray<ChipPlace> => {
       const kind = source.entries.get(token.path);
       return kind === undefined ? [] : [{ end: token.end, kind, label: token.path, start: token.start }];
     }),
