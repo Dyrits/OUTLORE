@@ -1,8 +1,12 @@
 import Svg, { Circle, G, Path } from "react-native-svg";
 import { emblemPaths } from "../foundation/emblems";
+import { chipIcons } from "../ui/chips";
 
 /** The quest's sword, the app's own emblem. */
 const swordPaths = emblemPaths.sword.map((path) => <Path d={path} key={path} />);
+
+/** The realm's keep, the same drawing the desktop's chips and pane strip give a realm. */
+const keepPaths = chipIcons.realm.paths.map((path) => <Path d={path} key={path} />);
 
 /** The phone shell's line drawings on a 24 by 24 grid, as the mobile shell pages draw them. */
 const drawings = {
@@ -22,12 +26,7 @@ const drawings = {
   ),
   lore: <Path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3zM5 17a3 3 0 013-3h11" />,
   menu: <Path d="M4 7h16M4 12h16M4 17h16" />,
-  realms: (
-    <>
-      <Path d="M4 20V8h3v3h3V8h4v3h3V8h3v12z" />
-      <Path d="M10 20v-5h4v5" />
-    </>
-  ),
+  realms: keepPaths,
   sword: swordPaths,
   swords: (
     <>
