@@ -175,7 +175,8 @@ const readEarlierConversation = Effect.fnUntraced(function* (
       WHERE m.thread_id = ${threadId}
         AND (
           (${!isAfterInterrupt} AND
-            (m.sender_kind = 'agent' OR (m.delivered_turn_id IS NOT NULL AND m.delivered_turn_id != ${turnId})))
+            (m.sender_kind = 'agent' OR (m.delivered_turn_id IS NOT NULL AND m.delivered_turn_id != ${turnId}))
+            AND NOT EXISTS (SELECT 1 FROM companion_exchanges e WHERE e.reply_message_id = m.id))
           OR (${isAfterInterrupt} AND m.delivered_turn_id IN (
             SELECT id FROM turns
             WHERE thread_id = ${threadId} AND status = 'interrupted' AND rowid > COALESCE((

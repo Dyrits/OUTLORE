@@ -6,6 +6,7 @@ import { eraseThreadsLore } from "../lore/index.ts";
 import { forgetAttachmentsOf, removeAttachmentFiles } from "./attachments.ts";
 import { forgetOutcomesOf } from "./commandOutcomes.ts";
 import { Commands } from "./commands.ts";
+import { listCompanionThreadIds } from "./companionThreads.ts";
 import { changed, type WithFollowUps } from "./followUps.ts";
 import { refuseGuildmaster } from "./guildmasterPlace.ts";
 import { haltThreads, releaseResolvedChatter } from "./lifecycle.ts";
@@ -47,14 +48,15 @@ const markDeleting = Effect.fn("markDeleting")(function* (threadId: string, conf
       message: "The threads changed. Review the deletion count again.",
     });
   }
-  const ids = rows.map((row) => row.id);
+  // The Companions that answered in these conversations go with them (thread-messaging, Mentioning a Companion with @).
+  const ids = [...rows.map((row) => row.id), ...(yield* listCompanionThreadIds(rows.map((row) => row.id)))];
   yield* sql`UPDATE threads SET is_deleting = 1 WHERE id IN ${sql.in(ids)}`;
   yield* haltThreads(ids, "Stopped");
   return changed(rows, { turnsToCancel: ids });
 });
 
-/** Erases the subtree's records; beneath a mission, the freed running slots then wake its waiting threads. */
-const eraseSubtree = Effect.fn("eraseSubtree")(function* (rows: Subtree, root: Subtree[number]) {
+/** Erases the subtree's records, not those of the Companions asked in it. */
+const eraseRecords = Effect.fn("eraseRecords")(function* (rows: Subtree, root: Subtree[number]) {
   const sql = yield* SqlClient.SqlClient;
   const ids = rows.map((row) => row.id);
   // A received message belongs to its receiver's history, even after its sender is deleted.
@@ -87,6 +89,26 @@ const eraseSubtree = Effect.fn("eraseSubtree")(function* (rows: Subtree, root: S
     return changed(null);
   }
   return changed(null, { missionsToWake: [root.missionId] });
+});
+
+/** Erases the hidden quests of the Companions asked in these conversations, with the records that tie them. */
+const eraseCompanions = Effect.fn("eraseCompanions")(function* (conversationIds: ReadonlyArray<string>) {
+  const sql = yield* SqlClient.SqlClient;
+  const companionIds = yield* listCompanionThreadIds(conversationIds);
+  if (companionIds.length === 0) return;
+  yield* sql`DELETE FROM companion_exchanges WHERE parent_thread_id IN ${sql.in(conversationIds)}`;
+  yield* sql`DELETE FROM companion_threads WHERE parent_thread_id IN ${sql.in(conversationIds)}`;
+  for (const companionId of companionIds) {
+    const rows = yield* readSubtree(companionId);
+    const root = rows[0];
+    if (root !== undefined) yield* eraseRecords(rows, root);
+  }
+});
+
+/** Erases the subtree's records and the Companions' quests asked in it; beneath a mission, the freed running slots then wake its waiting threads. */
+const eraseSubtree = Effect.fn("eraseSubtree")(function* (rows: Subtree, root: Subtree[number]) {
+  yield* eraseCompanions(rows.map((row) => row.id));
+  return yield* eraseRecords(rows, root);
 });
 
 /** Puts a subtree whose erasing failed back as it was, so the owner sees it and can delete it again. */

@@ -43,14 +43,21 @@ type KeyColumns = {
   readonly time: string;
 };
 
+/**
+ * The quest a column's mission is reported under: a Companion's spend is the quest's it answered in, so no hidden quest
+ * is ever a row of its own (thread-messaging, Mentioning a Companion with @). Budgets read the raw column and do not count it.
+ */
+const reportedMissionOf = (column: string) =>
+  `COALESCE((SELECT p.mission_id FROM companion_threads c JOIN threads p ON p.id = c.parent_thread_id WHERE c.mission_id = ${column}), ${column})`;
+
 /** The usage rows' columns. */
-export const usageColumns: KeyColumns = { mission: "u.mission_id", time: "u.ended_at" };
+export const usageColumns: KeyColumns = { mission: reportedMissionOf("u.mission_id"), time: "u.ended_at" };
 
 /** A message's columns. */
-export const messageColumns: KeyColumns = { mission: "x.mission_id", time: "x.sent_at" };
+export const messageColumns: KeyColumns = { mission: reportedMissionOf("x.mission_id"), time: "x.sent_at" };
 
 /** A turn's columns, its quest read through its thread `th`. */
-export const turnColumns: KeyColumns = { mission: "th.mission_id", time: "t.ended_at" };
+export const turnColumns: KeyColumns = { mission: reportedMissionOf("th.mission_id"), time: "t.ended_at" };
 
 /**
  * The SQL that gives a row its key under a dimension (see `UsageFilter`). The result is spliced into queries as text, so

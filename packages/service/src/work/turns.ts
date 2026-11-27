@@ -7,6 +7,8 @@ import { readContextLimit } from "../lore/index.ts";
 import { callDescriptionOf, saveActivityChange } from "./activities.ts";
 import { fallBackToBackup, resetBackupStep } from "./backups.ts";
 import { enforceBudgets } from "./budgets.ts";
+import { answerExchanges, refuseExchanges, releaseContext } from "./companionExchanges.ts";
+import { readCompanionOfThread } from "./companionThreads.ts";
 import { readLatestContextUsed, recordContextReading } from "./contextReadings.ts";
 import { contextLimitLineOf, hasReachedLimit } from "./contextWarning.ts";
 import { changed, unchanged } from "./followUps.ts";
@@ -147,6 +149,8 @@ export const completeTurn = Effect.fnUntraced(function* (
   }
   const status = isInterrupted ? "interrupted" : "completed";
   yield* sql`UPDATE turns SET status = ${status}, ended_at = ${now} WHERE id = ${turn.turnId}`;
+  // A Companion's turn ends with its answer copied into the conversation it was asked in (thread-messaging, CHG-0781).
+  yield* answerExchanges(threadId, turn.turnId, status);
   // The owner may have changed the harness or account during the turn: its session is then not the thread's.
   if (scope.kind === "main") yield* endTurn(scope, (yield* isSessionOfThread(threadId, turn)) ? sessionId : null);
   yield* finishRitualRun(threadId, isInterrupted ? "Interrupted" : "Done");
@@ -174,6 +178,10 @@ export const recordTurnFailure = Effect.fnUntraced(function* (
   const now = yield* Clock.currentTimeMillis;
   yield* sql`UPDATE turns SET status = 'failed', ended_at = ${now} WHERE id = ${turn.turnId}`;
   yield* sql`UPDATE messages SET delivered_turn_id = NULL WHERE delivered_turn_id = ${turn.turnId}`;
+  // What the turn was told of Companions' answers waits for the next turn; a Companion that failed says so.
+  yield* releaseContext(turn.turnId);
+  const companion = yield* readCompanionOfThread(threadId);
+  if (companion !== null) yield* refuseExchanges(companion, `the turn failed (${reason.trim()})`);
   yield* failTurn(threadId, reason);
   yield* touchMission(turn.missionId, now);
   const threadsToWake: string[] = [];

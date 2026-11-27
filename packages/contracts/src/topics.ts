@@ -22,6 +22,7 @@ export const queryTopics = {
   BrowseFolders: ["work"],
   FindArchivedRealm: ["work"],
   ListArchivedRealms: ["work"],
+  ListCompanions: [],
   ListConnectors: [],
   ListHarnesses: [],
   ListHosts: [],

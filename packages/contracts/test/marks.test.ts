@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  companionWordsOf,
   hasMark,
   isMarkCharacter,
   markCharacters,
@@ -23,8 +24,9 @@ describe("the table of message marks", () => {
     expect(markCharacters).toEqual(characters);
   });
 
-  it("reserves @ for a Companion, with no chips and no words read yet", () => {
-    expect(messageMarks.companion).toMatchObject({ character: "@", chipKinds: [], deliveryHeading: null });
+  it("gives @ to a Companion: a chip kind, a heading for the context line, and no reach", () => {
+    expect(messageMarks.companion).toMatchObject({ character: "@", chipKinds: ["companion"], grantsReach: false });
+    expect(messageMarks.companion.deliveryHeading).toContain("with @");
     expect(markNameOf("@")).toBe("companion");
   });
 
@@ -60,7 +62,7 @@ describe("the table of message marks", () => {
   });
 
   it("tells the thread what each mark that has words delivers, naming the mark's own character", () => {
-    for (const name of ["mention", "path", "skill"] as const) {
+    for (const name of ["companion", "mention", "path", "skill"] as const) {
       expect(messageMarks[name].deliveryHeading).not.toBeNull();
     }
     expect(messageMarks.mention.deliveryHeading).toContain("with #");
@@ -84,6 +86,13 @@ describe("the words each mark forms", () => {
     expect(skillTokensOf("use $architect, please")).toEqual([{ end: 14, name: "architect", start: 4 }]);
     expect(referenceTokensOf("a#quest:q1 @quest:q1 +quest:q1")).toEqual([]);
     expect(skillTokensOf("a/$skill and x$skill")).toEqual([]);
+  });
+
+  it("reads a Companion's word from @ only, ending where a sentence's punctuation starts", () => {
+    expect(companionWordsOf("ask @companion:claude:-:claude-opus-5-5, please")).toEqual([
+      { end: 39, path: "companion:claude:-:claude-opus-5-5", start: 4 },
+    ]);
+    expect(companionWordsOf("a@companion:claude:-:m #companion:claude:-:m @companion:claude:-")).toEqual([]);
   });
 
   it("reads no word of a mark from another mark's character", () => {

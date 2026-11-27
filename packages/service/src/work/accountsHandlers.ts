@@ -13,6 +13,7 @@ import {
   signInAccount,
   updateHarness,
 } from "./accounts.ts";
+import { companionChoicesOf } from "./companionChoices.ts";
 import { addKeyAccount, replaceAccountKey } from "./keyAccounts.ts";
 import type { HandlerDependencies, OwnerHandlers } from "./requestContext.ts";
 import type { TerminalScope } from "./terminalHost.ts";
@@ -31,6 +32,7 @@ export const accountsHandlers = (
     AddAccount: (add) => thenListHarnesses(addAccount(add.harness, add.label)),
     AddKeyAccount: (add) => thenListHarnesses(addKeyAccount(vault, add.provider, add.label, add.key, add.models)),
     InstallHarness: (given) => installHarness(given.harness).pipe(Effect.andThen(listHarnesses)),
+    ListCompanions: () => listHarnesses.pipe(Effect.map(companionChoicesOf)),
     ListHarnesses: () => listHarnesses,
     ListModelEfforts: (list) => listModelEfforts(list.harness, list.accountId, list.model),
     RemoveAccount: (remove) => thenListHarnesses(removeAccount(vault, remove.accountId)),
@@ -53,6 +55,7 @@ export const accountsHandlers = (
     | "AddAccount"
     | "AddKeyAccount"
     | "InstallHarness"
+    | "ListCompanions"
     | "ListHarnesses"
     | "ListModelEfforts"
     | "RemoveAccount"

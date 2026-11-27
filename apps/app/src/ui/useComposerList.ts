@@ -1,6 +1,7 @@
 import { markNameOf, type Skill } from "@outlore/contracts";
 import { useState } from "react";
 import type { ServiceClient } from "../foundation/client";
+import { useCompanions } from "../foundation/useCompanions";
 import { useMentionables } from "../foundation/useMentionables";
 import { useWorkspaceEntries } from "../foundation/useWorkspaceEntries";
 import type { Chip, Trigger } from "./chipEditorTypes";
@@ -20,7 +21,9 @@ import type { MenuRow } from "./mentionMenu";
  */
 export function useComposerList(
   skills: ReadonlyArray<Skill>,
-  mentions: { readonly client: ServiceClient; readonly workspacePath: string | null } | undefined,
+  mentions:
+    | { readonly canAskCompanions?: boolean; readonly client: ServiceClient; readonly workspacePath: string | null }
+    | undefined,
 ) {
   const [trigger, setTrigger] = useState<Trigger | null>(null);
   const [state, setState] = useState<ListState>(initialListState);
@@ -29,11 +32,19 @@ export function useComposerList(
   const isReference = mentions !== undefined && mark === "mention";
   const entries = useWorkspaceEntries(mentions?.client, mentions?.workspacePath ?? null, typedPath);
   const mentionables = useMentionables(mentions?.client, isReference);
+  const companions = useCompanions(mentions?.client, mentions?.canAskCompanions === true && mark === "companion");
   const list = composerListOf(
     {
+      companions: companions ?? [],
       entries,
       mentionables: mentionables ?? [],
-      mentions: mentions === undefined ? null : { hasFolder: (mentions.workspacePath ?? null) !== null },
+      mentions:
+        mentions === undefined
+          ? null
+          : {
+              canAskCompanions: mentions.canAskCompanions === true,
+              hasFolder: (mentions.workspacePath ?? null) !== null,
+            },
       skills,
       trigger,
     },

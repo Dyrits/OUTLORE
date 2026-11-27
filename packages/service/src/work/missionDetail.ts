@@ -9,6 +9,7 @@ import { listThreadActivities } from "./activities.ts";
 import { readCards } from "./attachments.ts";
 import { listBudgetEvents, readHeldStop } from "./budgetViews.ts";
 import { readChatter } from "./chatter.ts";
+import { listCompanionQuestions } from "./companionThreads.ts";
 import { emptyErrandCondition } from "./emptyQuest.ts";
 import { lastSampleOf, replyCountOf } from "./exchangeSamples.ts";
 import { listHandovers } from "./handover.ts";
@@ -176,7 +177,10 @@ export const readMission = Effect.fnUntraced(function* (missionId: string, threa
     anchored !== undefined && anchored.text !== first?.text
       ? { ...anchored, attachments: cards.get(anchored.id) ?? [] }
       : ownRoot;
-  const questions = yield* listThreadQuestions(selected.id);
+  const questions = [
+    ...(yield* listThreadQuestions(selected.id)),
+    ...(yield* listCompanionQuestions(selected.id)),
+  ].sort((current, next) => current.askedAt - next.askedAt);
   const suggestions = yield* listThreadSuggestions(selected.id);
   return {
     activities: yield* listThreadActivities(selected.id),

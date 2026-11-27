@@ -1,4 +1,6 @@
 import {
+  type CompanionChoice,
+  companionTokensOf,
   type Mentionable,
   type MentionKind,
   type MentionReference,
@@ -41,6 +43,8 @@ type ChipPlace = {
 
 /** What a text's chips are drawn from; `mentionables` is null while the quests and realms load. */
 type ChipSource = {
+  /** The models the `@` menu offers, to name a Companion's chip; null or absent while they load, when its model's identifier stands for it. */
+  readonly companions?: ReadonlyArray<CompanionChoice> | null;
   /** What each `+`-path names in the workspace; a path missing here is plain text. */
   readonly entries: ReadonlyMap<string, WorkspaceEntry["kind"]>;
   readonly mentionables: ReadonlyArray<Mentionable> | null;
@@ -55,7 +59,17 @@ const labelOfReference = (reference: MentionReference, mentionables: ReadonlyArr
   return found === undefined ? `${reference.kind} no longer open` : chipOfMentionable(found).label;
 };
 
-/** The chosen names, paths, and references in a text, in order, each with the icon and label it draws as a chip. */
+/** The label of a Companion's chip: its model's name where the menu knows it, else the identifier the message holds. */
+const labelOfCompanion = (
+  token: { readonly accountId: string | null; readonly harness: string; readonly model: string },
+  companions: ReadonlyArray<CompanionChoice> | null | undefined,
+) =>
+  companions?.find(
+    (choice) =>
+      choice.harness === token.harness && choice.accountId === token.accountId && choice.model === token.model,
+  )?.modelLabel ?? token.model;
+
+/** The chosen names, paths, references, and Companions in a text, in order, each with the icon and label it draws as a chip. */
 export const chipsOf = (text: string, source: ChipSource): ReadonlyArray<ChipPlace> =>
   [
     ...skillTokensOf(text)
@@ -79,6 +93,14 @@ export const chipsOf = (text: string, source: ChipSource): ReadonlyArray<ChipPla
             },
           ];
     }),
+    ...companionTokensOf(text).map(
+      (token): ChipPlace => ({
+        end: token.end,
+        kind: messageMarks.companion.chipKinds[0],
+        label: labelOfCompanion(token, source.companions),
+        start: token.start,
+      }),
+    ),
     ...pathTokensOf(text).flatMap((token: MentionToken): ReadonlyArray<ChipPlace> => {
       const kind = source.entries.get(token.path);
       return kind === undefined ? [] : [{ end: token.end, kind, label: token.path, start: token.start }];

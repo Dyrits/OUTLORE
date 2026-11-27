@@ -136,4 +136,34 @@ export const latestStoreMigrations = {
     yield* sql`ALTER TABLE accounts ADD COLUMN key_provider TEXT`;
     yield* sql`ALTER TABLE accounts ADD COLUMN key_models TEXT`;
   }),
+  // The Companion mention (thread-messaging, Mentioning a Companion with @; CHG-0781): a Companion the owner asks by
+  // name answers in a thread of its own, the top thread of a hidden quest (`is_companion`), found per conversation and
+  // model in `companion_threads`; one row of `companion_exchanges` per message that asked it. Nothing is rewritten.
+  "0082_companion_mentions": Effect.gen(function* () {
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`ALTER TABLE missions ADD COLUMN is_companion INTEGER NOT NULL DEFAULT 0`;
+    yield* sql`CREATE TABLE companion_threads (
+      parent_thread_id TEXT NOT NULL REFERENCES threads(id),
+      harness TEXT NOT NULL,
+      account_key TEXT NOT NULL,
+      model TEXT NOT NULL,
+      thread_id TEXT NOT NULL UNIQUE REFERENCES threads(id),
+      mission_id TEXT NOT NULL REFERENCES missions(id),
+      last_seen_message_id TEXT,
+      PRIMARY KEY (parent_thread_id, harness, account_key, model)
+    )`;
+    yield* sql`CREATE TABLE companion_exchanges (
+      id TEXT PRIMARY KEY,
+      parent_thread_id TEXT NOT NULL REFERENCES threads(id),
+      companion_thread_id TEXT NOT NULL REFERENCES threads(id),
+      owner_message_id TEXT NOT NULL,
+      prompt_message_id TEXT,
+      reply_message_id TEXT,
+      state TEXT NOT NULL,
+      context_turn_id TEXT,
+      asked_at INTEGER NOT NULL
+    )`;
+    yield* sql`CREATE INDEX companion_exchanges_companion ON companion_exchanges (companion_thread_id, state)`;
+    yield* sql`CREATE INDEX companion_exchanges_parent ON companion_exchanges (parent_thread_id, state)`;
+  }),
 };

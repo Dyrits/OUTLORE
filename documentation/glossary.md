@@ -115,7 +115,7 @@ A link on the originating message that shows the quest or errand and opens its c
 _Avoid_: Sub-thread, thread link (a reply is a message, see Comment)
 
 **Mention**:
-A realm, quest, or errand the owner names with `#` in a message, as context for the thread that receives it. A Companion named with `@` is a **Companion mention**: it asks that model to answer the one message (not built). Files are named with `+` and skills with `$`; those are not mentions.
+A realm, quest, or errand the owner names with `#` in a message, as context for the thread that receives it. A Companion named with `@` is a **Companion mention**: it asks that model to answer the one message, in the same conversation, while the quest's own Companion carries on (CHG-0781). The model answers in a **companion thread**, the top thread of a hidden quest of its own, that the owner never sees as a quest. Files are named with `+` and skills with `$`; those are not mentions.
 _Avoid_: Reference (the token's name in code), link, tag
 
 **Reach**:

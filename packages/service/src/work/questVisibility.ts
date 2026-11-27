@@ -12,8 +12,8 @@ import { SqlClient } from "effect/sql";
 
 /**
  * What a quest is for: the owner's own, Chronicler's own (permanent, one global and one per realm channel), or a
- * Companion's, reserved for a second model answering inside a conversation and hidden from the owner. No stored flag marks
- * a Companion's quest yet, so none matches until one does (thread-messaging, Mentioning a Companion with @).
+ * Companion's: the hidden one-thread quest in which a second model answers a message the owner mentioned it in
+ * (`missions.is_companion`, CHG-0781). The owner's lists never hold the last two.
  */
 export type QuestKind = "owner" | "chronicler" | "companion";
 
@@ -33,16 +33,13 @@ export const endedStandings = ["done", "archived"] as const satisfies ReadonlyAr
 export const standingOf = (ending: string | null): QuestStanding =>
   ending === null ? "open" : ending === "Archived" ? "archived" : "done";
 
-/** What marks a Companion's quest: nothing yet, so none matches. */
-const companionCondition = "0";
-
 /** What marks a quest of each kind, as SQL text: the one place a kind's storage is spelled. */
 const kindConditions = {
   chronicler: (quest) => `${quest}.is_guildmaster = 1`,
-  companion: () => companionCondition,
-  // The owner's quest is every quest that is neither Chronicler's nor a Companion's, so adding the Companion's flag
-  // takes its quests out of the owner's lists here and nowhere else.
-  owner: (quest) => `${quest}.is_guildmaster = 0 AND NOT (${companionCondition})`,
+  companion: (quest) => `${quest}.is_companion = 1`,
+  // The owner's quest is every quest that is neither Chronicler's nor a Companion's, so the Companion's flag takes its
+  // quests out of the owner's lists here and nowhere else.
+  owner: (quest) => `${quest}.is_guildmaster = 0 AND ${quest}.is_companion = 0`,
 } satisfies Record<QuestKind, (quest: string) => string>;
 
 /** What marks a quest as standing each way, as SQL text. */
@@ -102,13 +99,24 @@ export const questsFrom = (sql: SqlClient.SqlClient) => sql`missions m JOIN thre
 /** A quest's kind, from its row; null when there is no such quest. */
 export const readQuestKind = Effect.fnUntraced(function* (missionId: string) {
   const sql = yield* SqlClient.SqlClient;
-  const [row] = yield* sql<{ isChronicler: number }>`
-    SELECT ${isQuestKindOf(sql, "chronicler")} AS isChronicler FROM missions m WHERE m.id = ${missionId}`;
-  return row === undefined
-    ? null
-    : row.isChronicler === 1
-      ? ("chronicler" satisfies QuestKind)
+  const [row] = yield* sql<{ isChronicler: number; isCompanion: number }>`
+    SELECT ${isQuestKindOf(sql, "chronicler")} AS isChronicler, ${isQuestKindOf(sql, "companion")} AS isCompanion
+    FROM missions m WHERE m.id = ${missionId}`;
+  if (row === undefined) return null;
+  return row.isChronicler === 1
+    ? ("chronicler" satisfies QuestKind)
+    : row.isCompanion === 1
+      ? ("companion" satisfies QuestKind)
       : ("owner" satisfies QuestKind);
+});
+
+/** Whether the thread belongs to a Companion's hidden quest. */
+export const isCompanionThread = Effect.fnUntraced(function* (threadId: string) {
+  const sql = yield* SqlClient.SqlClient;
+  const rows = yield* sql<{ id: string }>`
+    SELECT t.id FROM threads t JOIN missions m ON m.id = t.mission_id
+    WHERE t.id = ${threadId} AND ${isQuestKindOf(sql, "companion")}`;
+  return rows.length > 0;
 });
 
 /** Whether the quest is Chronicler's. */

@@ -4,6 +4,7 @@ import { FileDiff } from "./activities.ts";
 import { AttachmentCard, AttachmentContent } from "./attachments.ts";
 import { AccountBudget, BudgetWindow, PriceStatus } from "./budgets.ts";
 import { ChronicleItem } from "./chronicle.ts";
+import { CompanionChoice } from "./companionMentions.ts";
 import { connectorResults } from "./connectorRequests.ts";
 import { DictationStatus, Transcript } from "./dictation.ts";
 import { EffortChoice, HarnessList } from "./harnesses.ts";
@@ -87,6 +88,7 @@ export const Results = {
   ForceUpdateHost: HostUpdate,
   InstallHarness: HarnessList,
   InterruptThread: Schema.Null,
+  ListCompanions: Schema.Array(CompanionChoice),
   ListHarnesses: HarnessList,
   ListHosts: Schema.Array(KnownHost),
   ListIntel: LoreView,

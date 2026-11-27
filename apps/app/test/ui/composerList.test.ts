@@ -1,4 +1,4 @@
-import type { Mentionable, Skill, WorkspaceEntry } from "@outlore/contracts";
+import type { AccountId, CompanionChoice, Mentionable, Skill, WorkspaceEntry } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import {
   composerListOf,
@@ -18,12 +18,30 @@ const mentionables: ReadonlyArray<Mentionable> = [
   { detail: "Outlore", id: "q1", kind: "quest", trail: ["Fix login"] },
   { detail: "/code/iskios", id: "r1", kind: "realm", trail: ["outlore"] },
 ];
+const companions: ReadonlyArray<CompanionChoice> = [
+  { accountId: null, accountLabel: "This computer", harness: "codex", model: "gpt-6.1-sol", modelLabel: "GPT 6.1 Sol" },
+  {
+    accountId: "acc-w" as AccountId,
+    accountLabel: "Work",
+    harness: "claude",
+    model: "claude-opus-5-5",
+    modelLabel: "Opus 5.5",
+  },
+  {
+    accountId: null,
+    accountLabel: "This computer",
+    harness: "claude",
+    model: "claude-opus-5-5",
+    modelLabel: "Opus 5.5",
+  },
+];
 const entries: ReadonlyArray<WorkspaceEntry> = [{ kind: "folder", path: "src/" }];
 
 const source = (trigger: ListSource["trigger"], hasMentions = true): ListSource => ({
+  companions,
   entries,
   mentionables,
-  mentions: hasMentions ? { hasFolder: true } : null,
+  mentions: hasMentions ? { canAskCompanions: true, hasFolder: true } : null,
   skills,
   trigger,
 });
@@ -64,8 +82,7 @@ describe("the $ list", () => {
     });
   });
 
-  it("offers nothing for an @, which names no Companion yet, or with no trigger", () => {
-    expect(composerListOf(source(typed("@")), initialListState).rows).toEqual([]);
+  it("offers nothing with no trigger", () => {
     expect(composerListOf(source(null), initialListState).rows).toEqual([]);
   });
 });
@@ -78,9 +95,12 @@ describe("the + list", () => {
   });
 
   it("offers nothing without a folder or where mentions are not offered", () => {
-    expect(composerListOf({ ...source(typed("+")), mentions: { hasFolder: false } }, initialListState).rows).toEqual(
-      [],
-    );
+    expect(
+      composerListOf(
+        { ...source(typed("+")), mentions: { canAskCompanions: true, hasFolder: false } },
+        initialListState,
+      ).rows,
+    ).toEqual([]);
     expect(composerListOf(source(typed("+"), false), initialListState).rows).toEqual([]);
   });
 });
@@ -147,5 +167,61 @@ describe("the # list across keystrokes", () => {
     expect(press(initialListState, none, "Enter")).toMatchObject({ chip: null, handled: false });
     const list = composerListOf(source(typed("#")), initialListState);
     expect(press(initialListState, list, "Enter", true).handled).toBe(false);
+  });
+});
+
+describe("the @ list", () => {
+  it("offers the Companion category for a bare @, and the models of every signed-in account inside it", () => {
+    const bare = composerListOf(source(typed("@")), initialListState);
+    expect(labelsOf(bare.rows)).toEqual(["category:companions"]);
+    const opened = press(initialListState, bare, "Enter");
+    expect(opened.state.category).toBe("companions");
+    const inside = composerListOf(source(typed("@")), opened.state);
+    expect(inside.isInCategory).toBe(true);
+    expect(labelsOf(inside.rows)).toEqual(["GPT 6.1 Sol", "Opus 5.5", "Opus 5.5"]);
+  });
+
+  it("names the harness and the account in each row's description, so two accounts of one model differ", () => {
+    const rows = composerListOf(source(typed("@", "opus")), initialListState).rows;
+    expect(rows.map((row) => (row.type === "option" ? row.description : row.type))).toEqual([
+      "heading",
+      "Claude Code · Work",
+      "Claude Code · This computer",
+    ]);
+  });
+
+  it("searches what follows the @ by model, harness, or account, under the Companions heading", () => {
+    expect(labelsOf(composerListOf(source(typed("@", "gpt")), initialListState).rows)).toEqual([
+      "heading:companions",
+      "GPT 6.1 Sol",
+    ]);
+    expect(labelsOf(composerListOf(source(typed("@", "work")), initialListState).rows)).toEqual([
+      "heading:companions",
+      "Opus 5.5",
+    ]);
+    expect(composerListOf(source(typed("@", "nothing-like-this")), initialListState).rows).toEqual([]);
+  });
+
+  it("hands back a chip holding harness, account and model, with Tab", () => {
+    const list = composerListOf(source(typed("@", "gpt")), initialListState);
+    expect(press(initialListState, list, "Tab").chip).toEqual({
+      kind: "companion",
+      label: "GPT 6.1 Sol",
+      token: "@companion:codex:-:gpt-6%2E1-sol",
+    });
+  });
+
+  it("offers nothing where no Companion can be asked, such as Chronicler's box", () => {
+    const where = { ...source(typed("@")), mentions: { canAskCompanions: false, hasFolder: true } };
+    expect(composerListOf(where, initialListState).rows).toEqual([]);
+    expect(composerListOf(source(typed("@"), false), initialListState).rows).toEqual([]);
+  });
+
+  it("returns to the categories with Backspace right after a bare @ in the category, as # does", () => {
+    const opened: ListState = { category: "companions", chosen: 0 };
+    const list = composerListOf(source(typed("@")), opened);
+    expect(press(opened, list, "Backspace")).toMatchObject({ handled: true, state: { category: null } });
+    expect(listAfterTyping(opened, typed("@", "g")).category).toBeNull();
+    expect(listAfterTyping(opened, typed("@")).category).toBe("companions");
   });
 });

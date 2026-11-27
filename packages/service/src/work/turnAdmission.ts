@@ -3,7 +3,10 @@ import { Clock, Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { Changes, newId, readSettings, touchMission } from "../core/index.ts";
 import type { StoredAttachment } from "./attachments.ts";
+import { reachedScopesOf } from "./budgetScopes.ts";
 import { holdIfReached } from "./budgets.ts";
+import { markContextDelivered, readCompanionContext, refuseExchanges } from "./companionExchanges.ts";
+import { type CompanionThread, readCompanionOfThread } from "./companionThreads.ts";
 import { recordPendingHandover } from "./handover.ts";
 import { holdThread, startRunning } from "./lifecycle.ts";
 import { readOwnCopy } from "./ownCopies.ts";
@@ -58,6 +61,18 @@ export const readRunningTurnId = Effect.fnUntraced(function* (threadId: string) 
   return turn?.id ?? null;
 });
 
+/** Whether a budget refuses the Companion's turn, which then answers its questions with the cause. */
+const refuseOverBudget = Effect.fnUntraced(function* (companion: CompanionThread) {
+  const [reached] = yield* reachedScopesOf(companion.missionId, {
+    accountId: companion.accountId,
+    harness: companion.harness,
+  });
+  if (reached === undefined) return false;
+  const whose = { Account: "its account's", Global: "the global", Mission: "its" }[reached._tag];
+  yield* refuseExchanges(companion, `${whose} budget is reached; only the owner can raise it`);
+  return true;
+});
+
 /**
  * Admits pending messages only when the thread, realm, workspace, budget, and running limit permit work. A background wake
  * is admitted under the same limits with no message: its harness began work on its own, such as Claude Code when a
@@ -94,7 +109,11 @@ const admit = Effect.fnUntraced(function* (threadId: string, isBackgroundWake: b
     yield* sql.afterCommit(changes.publishTopics(["work"]));
     return null;
   }
-  if (yield* holdIfReached(threadId, thread.missionId)) {
+  // A Companion over its budget is not held in a quest the owner cannot see: it answers in the conversation that it cannot.
+  const companion = yield* readCompanionOfThread(threadId);
+  const isHeld =
+    companion === null ? yield* holdIfReached(threadId, thread.missionId) : yield* refuseOverBudget(companion);
+  if (isHeld) {
     yield* touchMission(thread.missionId, now);
     yield* sql.afterCommit(changes.publishTopics(["work"]));
     return null;
@@ -111,6 +130,10 @@ const admit = Effect.fnUntraced(function* (threadId: string, isBackgroundWake: b
     taken.map((message) => message.id),
     turnId,
   );
+  // What Companions answered in this conversation since its last turn rides on a turn that runs anyway: it is context
+  // only, so it never starts one (thread-messaging, Mentioning a Companion with @).
+  const asked = isBackgroundWake ? { ids: [], text: "" } : yield* readCompanionContext(threadId);
+  yield* markContextDelivered(asked.ids, turnId);
   yield* startRunning(threadId);
   yield* touchMission(thread.missionId, now);
   yield* sql.afterCommit(changes.publishTopics(["work"]));
@@ -120,7 +143,7 @@ const admit = Effect.fnUntraced(function* (threadId: string, isBackgroundWake: b
     effort: thread.effort,
     harness: thread.harness,
     isBackgroundWake,
-    messages: taken.map((message) => message.text),
+    messages: [...taken.map((message) => message.text), ...(asked.text === "" ? [] : [asked.text])],
     missionId: thread.missionId,
     model: thread.model,
     sessionId: thread.sessionId,

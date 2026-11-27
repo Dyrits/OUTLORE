@@ -71,6 +71,7 @@ export const requestSourceRules = {
   InstallHarness: shared,
   InterruptThread: shared,
   ListArchivedRealms: shared,
+  ListCompanions: shared,
   ListConnectors: shared,
   ListHarnesses: shared,
   ListHosts: hostOnly,

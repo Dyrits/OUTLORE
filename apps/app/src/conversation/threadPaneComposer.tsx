@@ -80,7 +80,7 @@ export function ThreadPaneComposer({
         accessory={accessory}
         attachments={{ client, refusal: conversation.refusal }}
         dictation={{ client }}
-        mentions={{ client, workspacePath: thread.workspace?.path ?? null }}
+        mentions={{ canAskCompanions: true, client, workspacePath: thread.workspace?.path ?? null }}
         skills={skills}
         {...(canStop ? { onStop: conversation.stop } : {})}
         onSend={async (text, attachmentIds) => {

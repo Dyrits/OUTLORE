@@ -1,4 +1,5 @@
 import {
+  type CompanionChoice,
   type MarkName,
   type Mentionable,
   markedWordOf,
@@ -8,6 +9,7 @@ import {
 } from "@outlore/contracts";
 import type { Chip, Trigger } from "./chipEditorTypes";
 import {
+  companionMenuOf,
   type MentionCategory,
   type MenuKeyAction,
   type MenuRow,
@@ -17,9 +19,9 @@ import {
   selectableRowsOf,
 } from "./mentionMenu";
 
-// The list above the message box and the state it keeps between keystrokes (CHG-0181, CHG-0777): a `$` offers skills,
-// a `+` the files and folders of the workspace, and a `#` offers categories, a category's items, or the matches of
-// every category. An `@` offers nothing yet. Kept apart from the screen so a sequence of typing and keys can be checked
+// The list above the message box and the state it keeps between keystrokes (CHG-0181, CHG-0777, CHG-0781): a `$` offers
+// skills, a `+` the files and folders of the workspace, a `#` categories, a category's items, or the matches of every
+// category, and an `@` the Companion category or the models that match. Kept apart from the screen so a sequence of typing and keys can be checked
 // without one.
 
 /** What the list remembers: the category opened from a bare `#`, and the line the owner moved to. */
@@ -32,9 +34,11 @@ export const initialListState: ListState = { category: null, chosen: 0 };
 
 /** What the list is built from. `mentions` is null where a `#` or a `+` offers nothing; `hasFolder` is whether the message is written in a realm with a folder. */
 export type ListSource = {
+  /** The models of the signed-in accounts an `@` offers; empty while loading. */
+  readonly companions: ReadonlyArray<CompanionChoice>;
   readonly entries: ReadonlyArray<WorkspaceEntry>;
   readonly mentionables: ReadonlyArray<Mentionable>;
-  readonly mentions: { readonly hasFolder: boolean } | null;
+  readonly mentions: { readonly canAskCompanions: boolean; readonly hasFolder: boolean } | null;
   readonly skills: ReadonlyArray<Skill>;
   readonly trigger: Trigger | null;
 };
@@ -68,8 +72,10 @@ const skillRowsOf = (skills: ReadonlyArray<Skill>, partial: string): ReadonlyArr
 
 /** What each mark offers for what follows it; a mark added to the table must be given its list here, or none. */
 const rowsByMark = {
-  // Reserved: no Companion can be chosen yet (thread-messaging, Mentioning a Companion with @).
-  companion: () => [],
+  companion: (source, state, query) =>
+    source.mentions?.canAskCompanions !== true
+      ? []
+      : companionMenuOf({ category: state.category, companions: source.companions, query }),
   mention: (source, state, query) =>
     source.mentions === null
       ? []
@@ -79,7 +85,10 @@ const rowsByMark = {
   skill: (source, _state, query) => skillRowsOf(source.skills, query),
 } satisfies Record<MarkName, (source: ListSource, state: ListState, query: string) => ReadonlyArray<MenuRow>>;
 
-/** The lines a trigger offers: skills for `$`, the workspace's paths for `+`, quests, errands, and realms for `#`, nothing for `@`. */
+/** Whether the trigger's mark opens categories under a bare mark: `#` and `@` do. */
+const hasCategories = (trigger: Trigger) => ["mention", "companion"].includes(markNameOf(trigger.character) ?? "");
+
+/** The lines a trigger offers: skills for `$`, the workspace's paths for `+`, quests, errands, and realms for `#`, the Companion models for `@`. */
 const rowsOf = (source: ListSource, state: ListState): ReadonlyArray<MenuRow> => {
   const { trigger } = source;
   const mark = trigger === null ? null : markNameOf(trigger.character);
@@ -94,19 +103,14 @@ export const composerListOf = (source: ListSource, state: ListState): ComposerLi
   const selectable = selectableRowsOf(rows);
   return {
     highlighted: selectable[Math.min(state.chosen, selectable.length - 1)],
-    isInCategory:
-      state.category !== null &&
-      trigger !== null &&
-      markNameOf(trigger.character) === "mention" &&
-      trigger.query === "",
+    isInCategory: state.category !== null && trigger !== null && hasCategories(trigger) && trigger.query === "",
     rows,
   };
 };
 
 /** The state after the field reports a new text: the first line is on, and a category stays only under a bare `#`. */
 export const listAfterTyping = (state: ListState, trigger: Trigger | null): ListState => ({
-  category:
-    trigger === null || markNameOf(trigger.character) !== "mention" || trigger.query !== "" ? null : state.category,
+  category: trigger === null || !hasCategories(trigger) || trigger.query !== "" ? null : state.category,
   chosen: 0,
 });
 

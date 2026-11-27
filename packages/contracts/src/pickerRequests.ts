@@ -17,6 +17,8 @@ export const ListWorkspaceEntries = Schema.TaggedStruct("ListWorkspaceEntries", 
 });
 /** The quests, errands, and realms a typed `@` can name: none archived, and never Chronicler's own (CHG-0181). */
 export const ListMentionables = Schema.TaggedStruct("ListMentionables", {});
+/** The models of every signed-in account a typed `@` can ask (thread-messaging, Mentioning a Companion with @): one row per account and model. */
+export const ListCompanions = Schema.TaggedStruct("ListCompanions", {});
 /** Makes a folder inside a browsable folder (New folder). */
 export const CreateFolder = Schema.TaggedStruct("CreateFolder", { name: Schema.String, parent: Schema.String });
 /** Adds an existing folder to the browsable roots (Add root); only the host itself may. */

@@ -16,6 +16,7 @@ import { Vault } from "../vault/index.ts";
 import { Approvals } from "./approvals.ts";
 import { AttachmentsRoot, type StoredAttachment } from "./attachments.ts";
 import { Commands, makeCommands } from "./commands.ts";
+import { refuseUnansweredExchanges } from "./companionExchanges.ts";
 import { makeLifecycle, recoverThreadStates, stopThread } from "./lifecycle.ts";
 import { listPending, listThreadsWithPending } from "./pendingMessages.ts";
 import { finishRitualRun } from "./rituals.ts";
@@ -103,6 +104,7 @@ export const threadsLayer = Layer.effectContext(
     const startedAt = yield* Clock.currentTimeMillis;
     yield* sql`UPDATE turns SET status = 'interrupted', ended_at = ${startedAt} WHERE status = 'running'`;
     yield* recoverThreadStates;
+    yield* sql.withTransaction(refuseUnansweredExchanges);
 
     const isCurrent = (turnId: string) => local(isCurrentTurn(turnId));
     const publishDraft = (threadId: string, text: string) => PubSub.publish(changes.drafts, { text, threadId });

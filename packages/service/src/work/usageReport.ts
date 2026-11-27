@@ -46,7 +46,7 @@ type Scope = ReturnType<typeof scopeOf>;
 const readTotals = Effect.fnUntraced(function* (scope: Scope) {
   const sql = yield* SqlClient.SqlClient;
   const [row] = yield* sql.unsafe<AmountRow & { emptyTokenTurns: number; quests: number; threads: number }>(
-    `SELECT ${amountColumns}, COUNT(DISTINCT u.mission_id) AS quests, COUNT(DISTINCT u.thread_id) AS threads,
+    `SELECT ${amountColumns}, COUNT(DISTINCT ${usageColumns.mission}) AS quests, COUNT(DISTINCT u.thread_id) AS threads,
         COALESCE(SUM(CASE WHEN u.input + u.output + u.cache_read + u.cache_creation = 0 THEN 1 ELSE 0 END), 0) AS emptyTokenTurns
        ${scope.from} WHERE ${scope.where}`,
     scope.params,

@@ -15,7 +15,7 @@ export type MentionToken = {
 export const mentionKinds = ["quest", "side-quest", "realm"] as const;
 
 /** The kinds of chip the marks draw, each a key of the app's chip icons. */
-export type MarkChipKind = "quest" | "errand" | "realm" | "file" | "folder" | "skill";
+export type MarkChipKind = "quest" | "errand" | "realm" | "file" | "folder" | "skill" | "companion";
 
 /** What one mark is, as every reader sees it. */
 type MessageMark = {
@@ -35,11 +35,13 @@ const characters = { companion: "@", mention: "#", path: "+", skill: "$" } as co
 
 /** The marks, by what they name: a mention is a quest, errand, or realm; a path a file or folder; a skill; a Companion. */
 export const messageMarks = {
-  // Reserved: typing `@` offers nothing yet, and no word of it is read (thread-messaging, Mentioning a Companion with @).
+  // A model the owner asks inside the conversation (thread-messaging, Mentioning a Companion with @): the model answers,
+  // so its words are never delivered to the thread they are written in; the heading opens the line that tells the main
+  // Companion, as context only, that the message and the answer exist.
   companion: {
     character: characters.companion,
-    chipKinds: [],
-    deliveryHeading: null,
+    chipKinds: ["companion"],
+    deliveryHeading: `The owner asked these Companions with ${characters.companion} in this conversation. Each answered itself, so you are not asked: this is context only, so do not reply to it.`,
     grantsReach: false,
     reachHeads: [],
   },
@@ -115,6 +117,16 @@ const referenceBody = `(?:${mentionKinds.join("|")}):[A-Za-z0-9-]+`;
 
 /** The word the owner is typing at the end of a text: a mark starting the word, then what follows it up to the caret. */
 export const typedMarkPattern = new RegExp(`(^|\\s)(${markCharacters.map(escaped).join("|")})(\\S*)$`);
+
+/**
+ * The word a `@` token holds: `companion`, the harness, the account's id or `-` for the harness's own sign-in, and the
+ * model's identifier with every character outside letters, digits, `_` and `-` written `%XX`, so the word ends where
+ * the sentence's own punctuation starts.
+ */
+const companionBody = "companion:[a-z]+:[A-Za-z0-9-]+:[A-Za-z0-9_%-]+";
+
+/** The `@companion:<harness>:<account or ->:<model>` words in a message: the position of each `@`, and the word without it. */
+export const companionWordsOf = (text: string) => wordsOf(text, "companion", companionBody);
 
 /** The `#quest:<id>`, `#side-quest:<id>`, and `#realm:<id>` words in a message: the position of each `#`, and the word without it. */
 export const referenceTokensOf = (text: string) => wordsOf(text, "mention", referenceBody);

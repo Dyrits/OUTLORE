@@ -74,14 +74,17 @@ export const companionLabelOf = (harness: HarnessName, reported: string | null, 
 /**
  * Who wrote an agent reply: the harness and model recorded with it, so a handover leaves earlier replies under their own
  * provider and model (thread-handover). A reply that recorded no harness (from before handovers) is the thread's own;
- * one that recorded no model was written by the harness's default.
+ * one that recorded no model was written by the harness's default. A reply that carries an account's name, as a
+ * Companion asked with @ does, shows it after the model.
  */
 export const replyWriterOf = (
-  reply: { readonly harness: HarnessName | null; readonly model: string | null },
+  reply: { readonly fromTitle?: string | null; readonly harness: HarnessName | null; readonly model: string | null },
   threadHarness: HarnessName,
 ) => {
   const harness = reply.harness ?? threadHarness;
-  return { harness, label: companionLabelOf(harness, reply.model, "default") };
+  const label = companionLabelOf(harness, reply.model, "default");
+  // A Companion asked with @ answers under its account's name too (thread-messaging, CHG-0781): `Model · Account`.
+  return { harness, label: reply.fromTitle ? `${label} · ${reply.fromTitle}` : label };
 };
 
 /** An effort level in title case, such as "High" or "XHigh"; the providers name them in lowercase. */

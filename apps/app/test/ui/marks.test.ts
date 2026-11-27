@@ -1,4 +1,4 @@
-import { markCharacters, messageMarks } from "@outlore/contracts";
+import { companionTokenOf, markCharacters, messageMarks } from "@outlore/contracts";
 import { describe, expect, it } from "vitest";
 import { triggerOfEnd } from "../../src/ui/chipEditorTypes";
 import { chipOfMentionable, chipsOf } from "../../src/ui/chipPlaces";
@@ -27,16 +27,49 @@ describe("the message marks as the composer reads them", () => {
     expect(messageMarks.path.chipKinds).toContain("folder");
   });
 
-  it("offers no rows after the reserved @ yet, whatever follows it", () => {
-    const source = {
-      entries: [],
-      mentionables: [{ detail: null, id: "q1", kind: "quest" as const, trail: ["Fix login"] }],
-      mentions: { hasFolder: true },
-      skills: [{ description: "Design", name: "architect", path: "/x/SKILL.md" }],
+  it("draws a Companion as the chip kind its mark declares, with the model's name", () => {
+    const choice = {
+      accountId: null,
+      accountLabel: "This computer",
+      harness: "codex" as const,
+      model: "gpt-5",
+      modelLabel: "GPT 5",
     };
-    for (const query of ["", "arch", "gpt"]) {
+    const token = companionTokenOf(choice);
+    const placed = chipsOf(`ask ${token} now`, {
+      companions: [choice],
+      entries: new Map(),
+      mentionables: [],
+      skills: [],
+    });
+    expect(placed.map((place) => [place.kind, place.label])).toEqual([[messageMarks.companion.chipKinds[0], "GPT 5"]]);
+    expect(chipsOf(`ask ${token}`, { entries: new Map(), mentionables: [], skills: [] })[0]?.label).toBe("gpt-5");
+  });
+
+  it("offers a list after @ only where a Companion can be asked", () => {
+    const source = {
+      companions: [
+        {
+          accountId: null,
+          accountLabel: "This computer",
+          harness: "codex" as const,
+          model: "gpt-5",
+          modelLabel: "GPT 5",
+        },
+      ],
+      entries: [],
+      mentionables: [],
+      mentions: { canAskCompanions: true, hasFolder: true },
+      skills: [],
+    };
+    for (const query of ["", "gp"]) {
       const list = composerListOf({ ...source, trigger: { character: "@", query } }, initialListState);
-      expect(list.rows).toEqual([]);
+      expect(list.rows.length).toBeGreaterThan(0);
     }
+    const closed = composerListOf(
+      { ...source, mentions: { canAskCompanions: false, hasFolder: true }, trigger: { character: "@", query: "gp" } },
+      initialListState,
+    );
+    expect(closed.rows).toEqual([]);
   });
 });

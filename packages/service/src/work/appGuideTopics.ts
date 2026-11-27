@@ -157,7 +157,7 @@ export const guideTopics: ReadonlyArray<GuideTopic> = [
       "- # names a realm, a quest, or an errand, to give the thread as context. A thread reads only its own tree and what the owner mentioned.",
       "- + names a file or folder of the realm's folder.",
       "- $ lists skills found in the realm's .agents/skills and .claude/skills folders and then the home folder's; pick one and the thread is told to read and follow it. Skills from plugins are not listed.",
-      "- @ is kept for mentioning a Companion (model); it names nothing yet.",
+      "- @ asks another Companion (a model of a signed-in account) in a quest's or errand's conversation: pick one from the list and that model answers the message, in the same conversation, once; the quest's own Companion carries on, told of both as context only. The model works in the same folder under the same permission mode, and says so in a line when it cannot answer (signed out, over budget, usage limit reached). In a message to Chronicler @ names nothing.",
       "- ! opens a shell inside the message on the host its conversation runs on: the host's own window always, and a paired device's screens while the host's Allow terminals from paired devices switch is on; a paired device's shell runs fenced in the host's sandbox. The shell's visible output is sent as context.",
       "- Images can be pasted, dropped, or chosen and are given to the harness with the message. Only images are supported so far.",
       "- Comment: a Comment button appears on a message when hovered or focused, and one beside selected text. Comments wait in a tray above the message box and go with the next message in that thread.",

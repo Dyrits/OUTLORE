@@ -3,9 +3,12 @@ import { SqlClient } from "effect/sql";
 import { HarnessFailure, type HarnessPrompt, type PromptAnswer, textFieldOf } from "../core/index.ts";
 import type { ChoiceDecision } from "./approvalContracts.ts";
 import type { Approvals } from "./approvals.ts";
-import { isNotBeingDeletedOf } from "./questVisibility.ts";
+import { isCompanionThread, isNotBeingDeletedOf } from "./questVisibility.ts";
 
 // Asking the owner for a thread that cannot use a tool: Claude Code's permission prompts and the harnesses' own questions.
+
+/** The only thread tools a Companion answering a mention may call: the two that ask the owner. */
+const companionTools: ReadonlySet<string> = new Set(["answer_prompt", "request_approval"]);
 
 /** Why a thread may not call a thread tool now, or null: an unknown or deleting thread, or one the chatter guard paused. */
 export const readCallerRefusal = Effect.fnUntraced(function* (threadId: string, name: string) {
@@ -14,6 +17,9 @@ export const readCallerRefusal = Effect.fnUntraced(function* (threadId: string, 
     blocker: string | null;
   }>`SELECT blocker FROM threads WHERE id = ${threadId} AND ${isNotBeingDeletedOf(sql, "threads")}`;
   if (caller === undefined) return "Unknown thread.";
+  // A Companion answering a mention works in the folder and asks the owner; it opens no thread and reaches no other quest.
+  if (!companionTools.has(name) && (yield* isCompanionThread(threadId)))
+    return "A Companion answering a mention has no Outlore tools beyond asking the owner.";
   if (caller.blocker === "Chatter" && name !== "send_thread_message" && name !== "report_result")
     return "Paused by the chatter guard. Wait for the owner.";
   return null;

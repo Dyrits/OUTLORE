@@ -9,6 +9,7 @@ import {
   isChroniclerQuest,
   isChroniclerThread,
   isChroniclerTopThread,
+  isCompanionThread,
   isErrandArchivedOf,
   isErrandShownOf,
   isNotArchivedErrandOf,
@@ -101,29 +102,40 @@ describe("telling a quest's kind", () => {
     }).pipe(Effect.provide(setup().layer)),
   );
 
-  it.live("picks no quest with the reserved companion kind, and leaves it out of the owner's", () =>
+  it.live("picks a Companion's hidden quest with the companion kind alone, and leaves it out of the owner's", () =>
     Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
       const quests = yield* world;
-      expect(yield* questsWhere((sql) => isQuestKindOf(sql, "companion"))).toEqual([]);
-      // Every quest is of one kind: the owner's and Chronicler's together are all of them.
+      yield* sql`INSERT INTO missions (id, top_thread_id, title, created_at, last_activity_at, is_companion)
+        VALUES ('hidden-quest', 'hidden-thread', 'Hidden', 1, 1, 1)`;
+      yield* sql`INSERT INTO threads (id, mission_id, state, harness, model, effort, title)
+        VALUES ('hidden-thread', 'hidden-quest', 'Resting', 'claude', 'default', 'default', 'Hidden')`;
+      expect(yield* questsWhere((sql) => isQuestKindOf(sql, "companion"))).toEqual(["hidden-quest"]);
+      // Every quest is of one kind: the three kinds together are all of them, and none shares another's.
       const owner = yield* questsWhere((sql) => isQuestKindOf(sql, "owner"));
       const chronicler = yield* questsWhere((sql) => isQuestKindOf(sql, "chronicler"));
-      expect([...owner, ...chronicler].sort()).toEqual(
+      expect([...owner, ...chronicler, "hidden-quest"].sort()).toEqual(
         sorted(
           quests.opened.missionId,
           quests.done.missionId,
           quests.archived.missionId,
           quests.deleting.missionId,
+          "hidden-quest",
           ...quests.chroniclers,
         ),
       );
+      expect(yield* readQuestKind("hidden-quest")).toBe("companion");
+      expect(yield* isCompanionThread("hidden-thread")).toBe(true);
+      expect(yield* isCompanionThread(quests.opened.threadId)).toBe(false);
+      // The owner's visible quests never hold it, whatever its standing.
+      expect(yield* isVisibleQuest("hidden-quest")).toBe(false);
     }).pipe(Effect.provide(setup().layer)),
   );
 
   it("gives the same condition as text for a query built as a string", () => {
     expect(questKindTextOf("chronicler")).toBe("(m.is_guildmaster = 1)");
-    expect(questKindTextOf("companion")).toBe("(0)");
-    expect(questKindTextOf("owner", "mi")).toBe("(mi.is_guildmaster = 0 AND NOT (0))");
+    expect(questKindTextOf("companion")).toBe("(m.is_companion = 1)");
+    expect(questKindTextOf("owner", "mi")).toBe("(mi.is_guildmaster = 0 AND mi.is_companion = 0)");
   });
 
   it.live("reads a quest's kind, and null for none", () =>

@@ -1,4 +1,10 @@
-import { pathTokensOf, referenceTokensOf, type Skill, type WorkspaceEntry } from "@outlore/contracts";
+import {
+  companionTokensOf,
+  pathTokensOf,
+  referenceTokensOf,
+  type Skill,
+  type WorkspaceEntry,
+} from "@outlore/contracts";
 import { type ReactNode, useEffect, useState } from "react";
 import { Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
@@ -6,11 +12,12 @@ import type { ServiceClient } from "../foundation/client";
 import { emblemPaths } from "../foundation/emblems";
 import { styles } from "../foundation/styles";
 import { colors } from "../foundation/theme";
+import { useCompanions } from "../foundation/useCompanions";
 import { useMentionables } from "../foundation/useMentionables";
 import { chipsOf } from "./chipPlaces";
 import { errandIconPath } from "./composerIcons";
 
-// A chosen skill, workspace path, quest, errand, or realm drawn as a small chip with an icon, in the conversation and
+// A chosen skill, workspace path, quest, errand, realm, or Companion drawn as a small chip with an icon, in the conversation and
 // in the suggestion list.
 
 const ICON_SIZE = 12;
@@ -20,6 +27,11 @@ export const chipIcons = {
   borderlands: {
     paths: ["M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z", "M15.5 8.5l-2 5-5 2 2-5z", "M12 3v2M12 19v2M3 12h2M19 12h2"],
     viewBox: "0 0 24 24",
+  },
+  // A Companion is a head and shoulders: another model asked by name.
+  companion: {
+    paths: ["M8 7.5a2.5 2.5 0 1 0 0-5a2.5 2.5 0 1 0 0 5z", "M3 14c0-2.7 2.2-4.5 5-4.5s5 1.8 5 4.5"],
+    viewBox: "0 0 16 16",
   },
   errand: { paths: [errandIconPath], viewBox: "0 0 20 20" },
   file: { paths: ["M3.5 1.5 H9.5 L12.5 4.5 V14.5 H3.5 Z", "M9.5 1.5 V4.5 H12.5"], viewBox: "0 0 16 16" },
@@ -123,7 +135,8 @@ function useChipsOf({
     pathTokensOf(text).map((token) => token.path),
   );
   const mentionables = useMentionables(client, referenceTokensOf(text).length > 0);
-  return chipsOf(text, { entries, mentionables, skills });
+  const companions = useCompanions(client, companionTokensOf(text).length > 0);
+  return chipsOf(text, { companions, entries, mentionables, skills });
 }
 
 /** A message's text with each chosen skill, workspace path, quest, errand, or realm as a chip with its icon. */

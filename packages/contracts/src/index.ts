@@ -10,6 +10,7 @@ export * from "./attachments.ts";
 export * from "./budgetRequests.ts";
 export * from "./budgets.ts";
 export * from "./chronicle.ts";
+export * from "./companionMentions.ts";
 export * from "./companions.ts";
 export * from "./connectorRequests.ts";
 export * from "./contextGauge.ts";

@@ -39,6 +39,7 @@ export const readStartingContext = Effect.fnUntraced(function* (
   const sections = yield* readSections(
     {
       isChannel: false,
+      isCompanion: false,
       isGuildmaster: false,
       isTitleByUser: false,
       loreThreadId: parentId,

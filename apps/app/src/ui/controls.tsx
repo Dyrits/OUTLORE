@@ -73,7 +73,12 @@ export function Composer({
    * What a `#` names: realms, quests, and errands; and what a `+` names: the files and folders of the workspace when it
    * has a path (CHG-0181, CHG-0777). Without it, neither offers anything.
    */
-  mentions?: { readonly client: ServiceClient; readonly workspacePath: string | null };
+  mentions?: {
+    /** Whether an `@` can name a Companion to answer: in a quest's or errand's conversation, not in Chronicler's or an opening message. */
+    readonly canAskCompanions?: boolean;
+    readonly client: ServiceClient;
+    readonly workspacePath: string | null;
+  };
   /** A microphone that puts spoken words in the box, transcribed by the host (voice-input); shown only where it can record. */
   dictation?: { readonly client: ServiceClient };
   onBang?: () => void;

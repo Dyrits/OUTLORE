@@ -35,6 +35,7 @@ export {
 } from "./harnessTools.ts";
 export {
   approvalInstructionsOf,
+  companionInstructionsOf,
   guildmasterInstructionsOf,
   positionLineOf,
   type ThreadPosition,

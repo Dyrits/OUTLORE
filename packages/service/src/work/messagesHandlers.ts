@@ -2,10 +2,10 @@ import { Effect } from "effect";
 import { readDictationStatus, transcribeDictation } from "../voice/index.ts";
 import { admitOwnerText, nonBlank, runnerOfThread } from "./admission.ts";
 import { addAttachment, discardAttachment, readAttachment } from "./attachments.ts";
+import { insertOwnerMessage } from "./companionAsking.ts";
 import { changed } from "./followUps.ts";
 import { readViewingLine } from "./guildmasterContext.ts";
 import { type BriefingRewrite, ownerOutcomeOf, readJournalView, updateJournal } from "./journal.ts";
-import { insertUserMessage } from "./messaging.ts";
 import { echoUserMessageToParent } from "./parentEcho.ts";
 import { releaseQueued, requeueSteered } from "./pendingMessages.ts";
 import { copyOpeningToParent, isUnwritten } from "./questOrigins.ts";
@@ -62,15 +62,15 @@ export const messagesHandlers = ({ commands }: Pick<HandlerDependencies, "comman
             isUnwritten(send.threadId).pipe(
               Effect.flatMap((isFirst) => (isFirst ? copyOpeningToParent(send.threadId, text) : Effect.void)),
             ),
-            insertUserMessage(
-              send.threadId,
-              text,
-              delivery === "Queue",
+            insertOwnerMessage({
               attachmentIds,
-              send.realmPath ?? null,
+              isQueued: delivery === "Queue",
+              realmPath: send.realmPath ?? null,
+              sentToParent: send.sendToParent ?? null,
+              text,
+              threadId: send.threadId,
               viewing,
-              send.sendToParent ?? null,
-            ),
+            }),
           ).pipe(
             Effect.flatMap(({ value, threadsToWake }) =>
               send.sendToParent === undefined

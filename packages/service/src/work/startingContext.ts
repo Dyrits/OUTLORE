@@ -4,6 +4,7 @@ import { Effect } from "effect";
 import { SqlClient } from "effect/sql";
 import { notFound, tokensOf } from "../core/index.ts";
 import {
+  companionInstructionsOf,
   guildmasterInstructionsOf,
   positionLineOf,
   type ThreadPosition,
@@ -47,6 +48,8 @@ export type Sections = {
 export type Subject = {
   /** Whether it is a realm or Borderlands channel conversation. */
   readonly isChannel: boolean;
+  /** Whether it is a Companion answering a mention, which starts from the owner's words and the conversation, not a journal. */
+  readonly isCompanion: boolean;
   /** Whether it is Chronicler's thread, which starts from the realms and the quest list, not a journal. */
   readonly isGuildmaster: boolean;
   /** Whether the owner explicitly named the mission, which keeps the naming nudge off even if they chose "Quest". */
@@ -67,16 +70,22 @@ export const tokensOfPart = (part: string | null) => (part === null ? 0 : tokens
 export const readSections = Effect.fnUntraced(function* (subject: Subject, workspace: string) {
   return {
     budget: yield* budgetLineOf(subject.missionId, yield* accountOfThread(subject.position.threadId)),
-    instructions: (subject.isGuildmaster
-      ? [guildmasterInstructionsOf(subject.position.threadId, subject.isChannel), loreInstructions]
-      : [threadInstructionsOf(subject.position), journalInstructions, loreInstructions]
+    instructions: (subject.isCompanion
+      ? [companionInstructionsOf(subject.position.threadId)]
+      : subject.isGuildmaster
+        ? [guildmasterInstructionsOf(subject.position.threadId, subject.isChannel), loreInstructions]
+        : [threadInstructionsOf(subject.position), journalInstructions, loreInstructions]
     ).join("\n\n"),
-    journal: subject.isGuildmaster
-      ? yield* readGuildmasterContext
-      : yield* journalContextOf(subject.missionId, { isBriefingOnly: subject.position.isAside }),
+    journal: subject.isCompanion
+      ? ""
+      : subject.isGuildmaster
+        ? yield* readGuildmasterContext
+        : yield* journalContextOf(subject.missionId, { isBriefingOnly: subject.position.isAside }),
     lore: yield* loreContextOf(subject.loreThreadId),
     openerMessages: openerContextOf(subject.openerMessages, subject.openerTail),
-    position: [positionLineOf(subject.position), namingLineOf(subject)].filter((line) => line !== null).join(" "),
+    position: subject.isCompanion
+      ? ""
+      : [positionLineOf(subject.position), namingLineOf(subject)].filter((line) => line !== null).join(" "),
     workspace,
   } satisfies Sections;
 });
@@ -98,6 +107,7 @@ export const readThreadSubject = Effect.fnUntraced(function* (threadId: string) 
     guildmasterId: string | null;
     isAside: number;
     isChannel: number;
+    isCompanion: number;
     isGuildmaster: number;
     isTitleByUser: number;
     missionId: string;
@@ -110,7 +120,8 @@ export const readThreadSubject = Effect.fnUntraced(function* (threadId: string) 
   }>`
       SELECT t.mission_id AS missionId, t.harness, t.title, t.parent_id AS parentId, p.title AS parentTitle,
         t.is_aside AS isAside, t.opener_messages AS openerMessages, t.opener_tail AS openerTail,
-        ${isQuestKindOf(sql, "chronicler")} AS isGuildmaster, m.is_title_by_user AS isTitleByUser,
+        ${isQuestKindOf(sql, "chronicler")} AS isGuildmaster, ${isQuestKindOf(sql, "companion")} AS isCompanion,
+        m.is_title_by_user AS isTitleByUser,
         (m.chronicler_channel IS NOT NULL) AS isChannel,
         (SELECT COUNT(*) FROM turns u WHERE u.thread_id = t.id) AS turnCount,
         (SELECT g.top_thread_id FROM missions g WHERE ${isQuestKindOf(sql, "chronicler", "g")} AND g.chronicler_channel IS NULL LIMIT 1) AS guildmasterId
@@ -124,14 +135,18 @@ export const readThreadSubject = Effect.fnUntraced(function* (threadId: string) 
     threadId,
     title: row.title,
   };
+  // A Companion reads the lore of the conversation it was asked in.
+  const [companion] = yield* sql<{ parentThreadId: string }>`
+    SELECT parent_thread_id AS parentThreadId FROM companion_threads WHERE thread_id = ${threadId}`;
   return {
     harness: row.harness,
     ownCopy: yield* readOwnCopy(threadId),
     subject: {
       isChannel: row.isChannel === 1,
+      isCompanion: row.isCompanion === 1,
       isGuildmaster: row.isGuildmaster === 1,
       isTitleByUser: row.isTitleByUser === 1,
-      loreThreadId: threadId,
+      loreThreadId: companion?.parentThreadId ?? threadId,
       missionId: row.missionId,
       openerMessages: row.openerMessages,
       // The turn is admitted before its context is read, so a thread's first turn is the only one it has.

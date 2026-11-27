@@ -37,6 +37,15 @@ describe("replyWriterOf", () => {
     });
   });
 
+  it("names the account after the model for a Companion asked with @, and only then", () => {
+    expect(replyWriterOf({ fromTitle: "Work", harness: "claude", model: "claude-opus-5-5" }, "codex").label).toBe(
+      "Anthropic - Opus 5.5 · Work",
+    );
+    expect(replyWriterOf({ fromTitle: null, harness: "claude", model: "claude-opus-5-5" }, "codex").label).toBe(
+      "Anthropic - Opus 5.5",
+    );
+  });
+
   it("takes the thread's harness for a reply that recorded none", () => {
     expect(replyWriterOf({ harness: null, model: null }, "codex")).toEqual({
       harness: "codex",
