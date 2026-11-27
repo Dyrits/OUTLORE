@@ -1,6 +1,6 @@
 import type { Tier } from "@outlore/contracts";
 import { describe, expect, it, vi } from "vitest";
-import { workshopDraft } from "../../src/settings/workshopDraft";
+import { workshopDraft, workshopKept } from "../../src/settings/workshopDraft";
 
 const stack: Tier = { accountId: null, backups: [], effort: "high", harness: "claude", model: "opus" };
 
@@ -17,5 +17,19 @@ describe("the Workshop's draft preset", () => {
     workshopDraft.set(stack);
     expect(heard).toHaveBeenCalledTimes(2);
     workshopDraft.set(null);
+  });
+
+  it("keeps each Companion's unsaved chain for the tab to read again after it shows another Companion", () => {
+    const heard = vi.fn();
+    const stop = workshopKept.subscribe(heard);
+    workshopKept.set((current) => ({
+      ...current,
+      "custom:Mine": { editedFrom: stack, value: { ...stack, effort: "low" } },
+    }));
+    expect(workshopKept.get()["custom:Mine"]?.value.effort).toBe("low");
+    workshopKept.set(() => ({}));
+    expect(workshopKept.get()).toEqual({});
+    expect(heard).toHaveBeenCalledTimes(2);
+    stop();
   });
 });

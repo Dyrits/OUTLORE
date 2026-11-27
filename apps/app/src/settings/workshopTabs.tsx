@@ -1,6 +1,6 @@
 import type { Tier, TierName } from "@outlore/contracts";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { workshopDraft } from "./workshopDraft";
+import { workshopDraft, workshopKept } from "./workshopDraft";
 
 /** A built-in tier or a custom preset keyed by name. */
 export type WorkshopPreset = TierName | `custom:${string}`;
@@ -72,6 +72,7 @@ export function WorkshopTabsProvider({ children }: { children: ReactNode }) {
   const closeTab = useCallback(() => {
     // A draft is the tab's own: closing the tab throws it away.
     workshopDraft.set(null);
+    workshopKept.set(() => ({}));
     [...presses.current.values()].find((entry) => entry.isOpen)?.press();
   }, []);
   const revealed = useCallback((at: WorkshopFocus) => setRevealing((now) => (now === at ? null : now)), []);
@@ -80,7 +81,13 @@ export function WorkshopTabsProvider({ children }: { children: ReactNode }) {
     setRevealing(at);
   }, []);
   // Leaving the Workshop drops a draft that was never saved.
-  useEffect(() => () => workshopDraft.set(null), []);
+  useEffect(
+    () => () => {
+      workshopDraft.set(null);
+      workshopKept.set(() => ({}));
+    },
+    [],
+  );
   const value = useMemo(
     () => ({
       closeTab,

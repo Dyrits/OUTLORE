@@ -1,5 +1,6 @@
 import type { Tier } from "@outlore/contracts";
 import { useSyncExternalStore } from "react";
+import type { KeptDrafts } from "../editors/useDraftStack";
 
 /**
  * The preset being made in the Workshop, not yet saved under a name.
@@ -25,3 +26,27 @@ export const workshopDraft = {
 
 /** The draft preset, or null when none is being made. */
 export const useWorkshopDraft = () => useSyncExternalStore(workshopDraft.subscribe, workshopDraft.get);
+
+/**
+ * The unsaved chain of each Companion, by preset, kept while another Companion is shown. It lives here for the same
+ * reason as the draft: the tab is drawn outside the page's providers and again for each Companion it shows.
+ */
+let kept: KeptDrafts = {};
+const keptListeners = new Set<() => void>();
+
+export const workshopKept = {
+  get: () => kept,
+  set: (change: (current: KeptDrafts) => KeptDrafts) => {
+    kept = change(kept);
+    for (const listener of keptListeners) listener();
+  },
+  subscribe: (listener: () => void) => {
+    keptListeners.add(listener);
+    return () => {
+      keptListeners.delete(listener);
+    };
+  },
+};
+
+/** The kept unsaved chains. */
+export const useWorkshopKept = () => useSyncExternalStore(workshopKept.subscribe, workshopKept.get);

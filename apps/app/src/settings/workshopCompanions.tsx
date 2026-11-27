@@ -5,7 +5,7 @@ import { PresetChainEditor } from "../editors/presetChainEditor";
 import { PresetChooser } from "../editors/presetChooser";
 import { type PresetEntry, panelLayoutOf } from "../editors/presetEntries";
 import { useHarnesses } from "../editors/runners";
-import { type KeptDrafts, keptRenamed, keptWith, keptWithout, liveDraftsOf } from "../editors/useDraftStack";
+import { keptRenamed, keptWith, keptWithout, liveDraftsOf } from "../editors/useDraftStack";
 import { messageOf, type ServiceClient } from "../foundation/client";
 import { styles } from "../foundation/styles";
 import { useServiceQuery } from "../foundation/useServiceQuery";
@@ -13,7 +13,7 @@ import { companionStyles } from "./companionStyles";
 import { DraftPreset } from "./draftPreset";
 import { PresetActions, savePresetEdit } from "./presetActions";
 import { tierNames } from "./tierNames";
-import { useWorkshopDraft, workshopDraft } from "./workshopDraft";
+import { useWorkshopDraft, useWorkshopKept, workshopDraft, workshopKept } from "./workshopDraft";
 import { customFocusOf, type WorkshopFocus, type WorkshopPreset } from "./workshopTabs";
 
 /** The Workshop's Companions panel opens on the default stack or the selected preset. */
@@ -35,8 +35,9 @@ export function WorkshopCompanions({
   const draft = useWorkshopDraft();
   const [error, setError] = useState<string | null>(null);
   const [width, setWidth] = useState<number | null>(null);
-  // Each tab's unsaved chain, kept while another tab is open and shown in the list at once.
-  const [kept, setKept] = useState<KeptDrafts>({});
+  // Each Companion's unsaved chain, kept while another is shown and listed at once.
+  const kept = useWorkshopKept();
+  const setKept = workshopKept.set;
   if (settings === null) return <Text style={companionStyles.note}>Reading the settings…</Text>;
   const defaults = {
     accountId: null,
@@ -182,9 +183,10 @@ export function WorkshopCompanions({
                   key={preset.name}
                   name={preset.name}
                   onDeleted={() => setKept((current) => keptWithout(current, preset.focus))}
-                  onRenamed={(nextName) =>
-                    setKept((current) => keptRenamed(current, preset.focus, customFocusOf(nextName)))
-                  }
+                  onRenamed={(nextName) => {
+                    setKept((current) => keptRenamed(current, preset.focus, customFocusOf(nextName)));
+                    onFocus(customFocusOf(nextName));
+                  }}
                 />
               </>
             )}
