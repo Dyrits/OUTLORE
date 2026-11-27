@@ -61,9 +61,9 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
+- To resume tracking inspirations' latest changes (2026-11-27 primary-source sweep merged into `documentation/inspirations.md` with four research notes; Antigravity `/usage` compliance flag, CLI 1.5.16 multi-account env fix, and candidate ideas ready for backlog triage), read the [current handoff](.agents/handoffs/2026-11-27-1120-inspirations-tracking.md). Handoffs are shared and committed.
+
 - To resume the first message of a thread drawing the owner's chips (CHG-0784: `$debug` showed as plain words above "1 reply"; built and committed, window and phone not looked at), read the [current handoff](.agents/handoffs/2026-11-27-1028-thread-root-chips.md). Handoffs are shared and committed.
 
 - To resume the phone bar's remarks (CHG-0782, CHG-0783: dot on the Quests tab, quarter-second hold, creation rows in each sheet, top bar in the desktop's order, the realm's keep on the Realms tab; built and tested, no phone check yet), read the [current handoff](.agents/handoffs/2026-11-27-0940-phone-bar-realm-keep.md). Handoffs are shared and committed.
-
-- To resume the Companion mention with `@` (CHG-0781: built, merged and pushed to `main`, tested only against the fake harness; window, phone and live harness not checked), read the [current handoff](.agents/handoffs/2026-11-27-0810-companion-mention-pushed.md). Handoffs are shared and committed.
 
