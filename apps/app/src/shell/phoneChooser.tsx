@@ -3,7 +3,7 @@ import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, useWindowDim
 import { colors, fontSizes, fonts, radii } from "../foundation/theme";
 import { StateBadge } from "../ui/stateMarks";
 import { barBottom } from "./phoneBar";
-import type { PhoneChoice } from "./phoneChoices";
+import type { PhoneChoice, PhoneCreation } from "./phoneChoices";
 import type { Choice } from "./phoneSelection";
 import { barHeight, withOpacity } from "./phoneShell";
 
@@ -16,12 +16,20 @@ const sheetGap = 10;
  */
 export function PhoneChooser({
   choices,
+  creation,
+  failure,
   onChoose,
+  onCreate,
   onClose,
   title,
 }: {
   choices: ReadonlyArray<PhoneChoice>;
+  /** The row at the head of the sheet that makes a new one. */
+  creation: PhoneCreation;
+  /** Why the last creation failed, shown under the title. */
+  failure: string | null;
   onChoose: (choice: Choice) => void;
+  onCreate: () => void;
   onClose: () => void;
   title: string;
 }) {
@@ -51,7 +59,25 @@ export function PhoneChooser({
       >
         <View style={local.grab} />
         <Text style={local.title}>{title}</Text>
+        {failure !== null && <Text style={local.failure}>{failure}</Text>}
         <ScrollView>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onCreate}
+            style={({ pressed }) => [local.row, pressed && local.rowPressed]}
+          >
+            <View style={local.plus}>
+              <Text style={local.plusMark}>+</Text>
+            </View>
+            <View style={local.text}>
+              <Text numberOfLines={1} style={local.name}>
+                {creation.name}
+              </Text>
+              <Text numberOfLines={1} style={local.note}>
+                {creation.note}
+              </Text>
+            </View>
+          </Pressable>
           {choices.length === 0 && <Text style={local.empty}>Nothing here yet.</Text>}
           {choices.map((entry) => (
             <Pressable
@@ -81,6 +107,13 @@ export function PhoneChooser({
 
 const local = StyleSheet.create({
   empty: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.md, padding: 12 },
+  failure: {
+    color: colors.dangerText,
+    fontFamily: fonts.sans,
+    fontSize: fontSizes.sm,
+    paddingBottom: 8,
+    paddingHorizontal: 4,
+  },
   grab: {
     alignSelf: "center",
     backgroundColor: colors.borderStrong,
@@ -91,6 +124,15 @@ const local = StyleSheet.create({
   },
   name: { color: colors.text, fontFamily: fonts.sans, fontSize: fontSizes.base, fontWeight: "600" },
   note: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.sm },
+  plus: {
+    alignItems: "center",
+    backgroundColor: colors.accentSoft,
+    borderRadius: radii.pill,
+    height: 24,
+    justifyContent: "center",
+    width: 24,
+  },
+  plusMark: { color: colors.accentText, fontSize: fontSizes.base, fontWeight: "700", lineHeight: 20 },
   row: { alignItems: "center", borderRadius: radii.xl, flexDirection: "row", gap: 10, marginBottom: 6, padding: 12 },
   rowPressed: { backgroundColor: colors.controlHover },
   rowSelected: { backgroundColor: colors.accentSoft },

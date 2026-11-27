@@ -61,8 +61,8 @@ When adding a handoff, keep only the three newest current handoffs linked below;
 
 Latest handoffs:
 
-- To resume the Companion mention with `@` (CHG-0781: built, merged and pushed to `main`, tested only against the fake harness; window, phone and live harness not checked), read the [current handoff](.agents/handoffs/2026-11-27-0810-companion-mention-pushed.md). Handoffs are shared and committed.
+- To resume the phone bar's remarks (CHG-0782: dot on the Quests tab, quarter-second hold, creation rows in each sheet, top bar in the desktop's order; built and tested, no phone check yet), read the [current handoff](.agents/handoffs/2026-11-27-0907-phone-bar-remarks.md). Handoffs are shared and committed.
 
-- To resume the composer's send and stop buttons, now filled with the accent so they read in every theme (built, no screen seen yet), read the [current handoff](.agents/handoffs/2026-11-27-0045-composer-send-button-visibility.md). Handoffs are shared and committed.
+- To resume the Companion mention with `@` (CHG-0781: built, merged and pushed to `main`, tested only against the fake harness; window, phone and live harness not checked), read the [current handoff](.agents/handoffs/2026-11-27-0810-companion-mention-pushed.md). Handoffs are shared and committed.
 
 - To resume provider API key accounts (CHG-0775: built, Standards-refactored and committed; Specifications findings open), read the [current handoff](.agents/handoffs/2026-11-27-0131-provider-api-key-accounts.md). Handoffs are shared and committed.

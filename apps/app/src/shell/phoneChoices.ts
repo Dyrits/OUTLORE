@@ -81,3 +81,13 @@ export const choiceTitleOf = (kind: ChoiceKind, selection: PhoneSelection, quest
   if (kind === "quest") return `Choose a quest in ${selection.realm?.name ?? borderlandsName}`;
   return `Choose an errand in ${questTitle ?? "the quest"}`;
 };
+
+/** The creation row that opens a sheet: what it names and where it makes it. */
+export type PhoneCreation = { readonly name: string; readonly note: string };
+
+/** The row that opens each sheet: it makes a realm, a quest in the chosen realm, or an errand of the chosen quest. */
+export const creationOf = (kind: ChoiceKind, selection: PhoneSelection, questTitle: string | null): PhoneCreation => {
+  if (kind === "realm") return { name: "New realm", note: "Name a folder or a repository" };
+  if (kind === "quest") return { name: "New quest", note: `In ${selection.realm?.name ?? borderlandsName}` };
+  return { name: "New errand", note: `In ${questTitle ?? "the quest"}` };
+};

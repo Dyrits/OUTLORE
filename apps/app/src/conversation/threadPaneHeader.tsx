@@ -115,6 +115,12 @@ export function ThreadPaneHeader({
       style={phoneStyle}
     />
   );
+  const startQuest = () =>
+    void act(
+      client
+        .request({ _tag: "StartEmptyQuest", realmId: detail.mission.workspaceId, requestId: newRequestId() })
+        .then((started) => onOpenMission(started.missionId)),
+    );
   const hasActions = isOwnQuest || hasErrandActions(detail);
   const windowQuestTab = useContext(QuestTabButtonContext);
   const questTab = isInPane ? null : windowQuestTab;
@@ -127,7 +133,6 @@ export function ThreadPaneHeader({
           actions={
             ritualRunAction ?? (
               <>
-                {onNewErrand !== undefined && <NewErrandButton onPress={onNewErrand} style={phoneStyle} />}
                 {isOwnQuest ? (
                   <>
                     {doneAction}
@@ -136,6 +141,8 @@ export function ThreadPaneHeader({
                 ) : (
                   errandActions
                 )}
+                {thread.parentId === null && canTakeTurns && <NewQuestButton onPress={startQuest} style={phoneStyle} />}
+                {onNewErrand !== undefined && <NewErrandButton onPress={onNewErrand} style={phoneStyle} />}
               </>
             )
           }
@@ -177,19 +184,7 @@ export function ThreadPaneHeader({
               {isInPane && thread.parentId === null && canTakeTurns && (
                 <>
                   <HeaderSeparator />
-                  <NewQuestButton
-                    onPress={() =>
-                      void act(
-                        client
-                          .request({
-                            _tag: "StartEmptyQuest",
-                            realmId: detail.mission.workspaceId,
-                            requestId: newRequestId(),
-                          })
-                          .then((started) => onOpenMission(started.missionId)),
-                      )
-                    }
-                  />
+                  <NewQuestButton onPress={startQuest} />
                   {hasAfterActions && <HeaderSeparator />}
                 </>
               )}

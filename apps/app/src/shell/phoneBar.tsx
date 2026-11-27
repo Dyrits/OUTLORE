@@ -12,7 +12,7 @@ import { barBottomGap, barHeight, type PhoneTab, phoneTabs, withOpacity } from "
 export const barBottom = Platform.OS === "web" ? barBottomGap.web : barBottomGap.native;
 
 /** How long a tab is held before it opens its sheet (CHG-0773). */
-const holdMilliseconds = 500;
+const holdMilliseconds = 250;
 const growMilliseconds = 360;
 const chronicleWidth = 58;
 const tabWidth = 76;
@@ -29,7 +29,7 @@ const tabLabelOf = (id: PhoneTab) => phoneTabs.find((entry) => entry.id === id)?
 export const chronicleLabelOf = (unreadCount: number) =>
   unreadCount > 0 ? `${tabLabelOf("chronicle")}, ${unreadCount} unread` : tabLabelOf("chronicle");
 
-// Web browsers select text or open a context menu on a half-second press unless suppressed on holdable tabs.
+// Web browsers select text or open a context menu on a quarter-second press unless suppressed on holdable tabs.
 const noHoldSelect = webOnly({ userSelect: "none", WebkitTouchCallout: "none" });
 
 /**
@@ -67,6 +67,7 @@ function Slot({ children, isShown, width }: { children: ReactNode; isShown: bool
  */
 function BarTab({
   badge,
+  dot = false,
   icon,
   isLit,
   label,
@@ -76,13 +77,15 @@ function BarTab({
   width,
 }: {
   badge?: number;
+  /** A small gold dot at the icon's corner, with no number. */
+  dot?: boolean;
   icon: PhoneIconName;
   isLit: boolean;
   /** The words under the icon; the Chronicle shows its icon alone. */
   label: string | null;
   /** What assistive technology reads. */
   name: string;
-  /** Held for half a second; none for a tab that chooses nothing. */
+  /** Held for a quarter of a second; none for a tab that chooses nothing. */
   onHold?: () => void;
   onTap: () => void;
   width: number;
@@ -122,6 +125,7 @@ function BarTab({
             <Text style={local.badgeText}>{badge}</Text>
           </View>
         )}
+        {dot && <View style={local.dot} />}
       </View>
       {label !== null && <Text style={[local.label, isLit && local.labelLit]}>{label}</Text>}
       <Animated.View
@@ -135,7 +139,7 @@ function BarTab({
 /**
  * The floating bar of the phone shell (CHG-0773): the Chronicle and Realms tabs, and the Quests and Errands tabs that
  * grow in once a realm and a quest are chosen. A tap shows a tab's choice, or opens its sheet while there is none; a hold
- * opens the sheet to change it. The Quests tab shows two swords until a quest is chosen, then one.
+ * opens the sheet to change it. The Quests tab shows crossed swords, with a gold dot at their corner once a quest is chosen.
  */
 export function PhoneBar({
   client,
@@ -184,7 +188,8 @@ export function PhoneBar({
         </Slot>
         <Slot isShown={hasQuests} width={tabWidth}>
           <BarTab
-            icon={selection.quest === null ? "swords" : "sword"}
+            dot={selection.quest !== null}
+            icon="swords"
             isLit={tab === "quests"}
             label={tabLabelOf("quests")}
             name={tabLabelOf("quests")}
@@ -240,6 +245,17 @@ const local = StyleSheet.create({
     shadowOffset: { height: 6, width: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 18,
+  },
+  dot: {
+    backgroundColor: colors.warningText,
+    borderColor: colors.accentSoft,
+    borderRadius: radii.pill,
+    borderWidth: 1.5,
+    height: 10,
+    position: "absolute",
+    right: -5,
+    top: -3,
+    width: 10,
   },
   fill: { backgroundColor: colors.accentText, borderRadius: 2, bottom: 5, height: 3, position: "absolute" },
   label: { color: colors.textMuted, fontFamily: fonts.sans, fontSize: fontSizes.xs, fontWeight: "600" },

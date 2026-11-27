@@ -30,6 +30,7 @@ const questId = "quest" as MissionId;
 const errandId = "errand" as ThreadId;
 const studioHostId = "studio" as HostId;
 const noop = () => {};
+const creation = { name: "New realm", note: "Name a folder or a repository" };
 
 let fakeClient: ServiceClient;
 
@@ -151,9 +152,18 @@ describe("rendering the phone's sheet", () => {
 
   it("lists what can be chosen under its title, and marks the one chosen", () => {
     const markup = renderToStaticMarkup(
-      createElement(PhoneChooser, { choices, onChoose: noop, onClose: noop, title: "Choose a realm" }),
+      createElement(PhoneChooser, {
+        choices,
+        creation,
+        failure: null,
+        onChoose: noop,
+        onClose: noop,
+        onCreate: noop,
+        title: "Choose a realm",
+      }),
     );
     expect(markup).toContain("Choose a realm");
+    expect(markup).toContain("New realm");
     expect(markup).toContain("2 quests");
     expect(markup).toContain("Borderlands");
     expect(markup.match(/✓/g)).toHaveLength(1);
@@ -161,7 +171,15 @@ describe("rendering the phone's sheet", () => {
 
   it("says so when there is nothing to choose", () => {
     const markup = renderToStaticMarkup(
-      createElement(PhoneChooser, { choices: [], onChoose: noop, onClose: noop, title: "Choose a quest in One" }),
+      createElement(PhoneChooser, {
+        choices: [],
+        creation,
+        failure: null,
+        onChoose: noop,
+        onClose: noop,
+        onCreate: noop,
+        title: "Choose a quest in One",
+      }),
     );
     expect(markup).toContain("Nothing here yet.");
   });

@@ -1,5 +1,10 @@
 # Work in progress
 
+## Phone bar remarks: dot, quarter-second hold, creation rows, top bar order · 2026-11-27 · built and tested; no phone check yet
+
+CHG-0782 in `0.2.12-Pre-Alpha`: the Quests tab draws crossed swords with a gold dot once a quest is chosen; a tab opens its sheet after 250 ms; each sheet starts with a New realm, New quest or New errand row (`creationOf`, `PhoneChooser`, `narrowShell.tsx`, `useStartQuest`); on a quest the phone's top bar runs Mark as done, Archive, New quest, New errand, sword as the desktop does. [Proof](verification/2026-11-27-phone-quest-tab-and-sheets.md): rows' content proven by tests that fail when broken; the dot, the hold, pressing a row and the top bar's order are unproven until looked at on a phone.
+Next: on a phone, look at the dot and its colour in each theme, press a tab for 0.2 s and 0.3 s, press each creation row, check the top bar on a quest and on an errand; decide whether the dot should be the warning colour in every theme.
+
 ## Companion mention with @ · 2026-11-27 · built and tested against the fake harness; window, phone and a live harness pending
 
 CHG-0781 in `0.2.10-Pre-Alpha` (branch `worktree/companion-mention`, from `6f7cabfe`): `@` in a quest's or errand's message box lists the models of every signed-in account (`ListCompanions`); a message that names one is answered by that model in the same conversation, once, from a hidden one-thread quest of kind `companion` (migration `0082`, `companion_threads`, `companion_exchanges`; `work/companion*.ts`), while the main Companion carries on and is told of both as context only. A model that cannot answer (account gone or signed out, budget, plan window with its reset time, failed turn, restart) says so in the conversation. The side-run scope and the per-run MCP token were not needed: the Companion's thread has its own id. Verified with Biome, `bun run typecheck` (7 workspaces) and `CI=1 bun run test packages/contracts packages/service apps/app` (396 files, 3,273 passed, 80 skipped by the sandbox, 0 failed).

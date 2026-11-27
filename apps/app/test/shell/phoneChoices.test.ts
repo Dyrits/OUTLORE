@@ -1,7 +1,13 @@
 import { MissionSummary, ThreadSummary, WorkspaceChoice } from "@outlore/contracts";
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
-import { choiceTitleOf, errandChoicesOf, questChoicesOf, realmChoicesOf } from "../../src/shell/phoneChoices";
+import {
+  choiceTitleOf,
+  creationOf,
+  errandChoicesOf,
+  questChoicesOf,
+  realmChoicesOf,
+} from "../../src/shell/phoneChoices";
 import { emptySelection } from "../../src/shell/phoneSelection";
 import { placementsOf } from "../../src/shell/questTree";
 
@@ -123,5 +129,14 @@ describe("titling a chooser sheet", () => {
     expect(choiceTitleOf("realm", selection, null)).toBe("Choose a realm");
     expect(choiceTitleOf("quest", selection, null)).toBe("Choose a quest in One");
     expect(choiceTitleOf("errand", selection, "Alpha")).toBe("Choose an errand in Alpha");
+  });
+});
+
+describe("the creation row of a chooser sheet", () => {
+  it("names what it makes and where", () => {
+    const selection = { ...emptySelection, realm: { id: "one", name: "One" } };
+    expect(creationOf("realm", selection, null).name).toBe("New realm");
+    expect(creationOf("quest", selection, null)).toEqual({ name: "New quest", note: "In One" });
+    expect(creationOf("errand", selection, "Alpha")).toEqual({ name: "New errand", note: "In Alpha" });
   });
 });

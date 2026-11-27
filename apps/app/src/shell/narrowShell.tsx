@@ -1,3 +1,4 @@
+import { WorkspaceId } from "@outlore/contracts";
 import type { Dispatch, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, StyleSheet, View } from "react-native";
@@ -8,9 +9,10 @@ import { allMissions, listedMissions } from "../foundation/queries";
 import { type PhoneHeader, PhoneHeaderSetter } from "../foundation/shellContext";
 import { colors } from "../foundation/theme";
 import { useServiceQuery } from "../foundation/useServiceQuery";
+import { NewRealmModal } from "../realms/newRealmModal";
 import type { Location, NavigationEvent } from "./location";
 import { barBottom, PhoneBar } from "./phoneBar";
-import { choiceTitleOf, errandChoicesOf, questChoicesOf, realmChoicesOf } from "./phoneChoices";
+import { choiceTitleOf, creationOf, errandChoicesOf, questChoicesOf, realmChoicesOf } from "./phoneChoices";
 import { PhoneChooser } from "./phoneChooser";
 import {
   type Choice,
@@ -28,6 +30,7 @@ import { barClearanceOf, chronicleEvent, phoneBackOf, phoneShellOf } from "./pho
 import { placementsOf } from "./questTree";
 import { SideMenu } from "./sideMenu";
 import { type DetailsToggle, NarrowTopBar } from "./topBar";
+import { useStartQuest } from "./useStartQuest";
 
 /**
  * The phone's frame (CHG-0773): a top bar over the content, and the floating bar of tabs over it all. The bar grows as
@@ -64,6 +67,7 @@ export function NarrowShell({
   const [selection, setSelection] = useState(emptySelection);
   const [chooser, setChooser] = useState<ChoiceKind | null>(null);
   const [header, setHeader] = useState<PhoneHeader | null>(null);
+  const [isNamingRealm, setNamingRealm] = useState(false);
   // The sheet closes whenever another screen or the side menu comes on show.
   const { isMenuOpen, listedRealm, openMission, openThread, place } = location;
   // biome-ignore lint/correctness/useExhaustiveDependencies: the screen or side menu on show is what closes the sheet.
@@ -109,6 +113,23 @@ export function NarrowShell({
     setChooser(null);
     const event = chosenEventOf(choice, selection);
     if (event !== null) dispatch(event);
+  };
+  const quest = useStartQuest(
+    client,
+    selection.realm?.id == null ? null : WorkspaceId.make(selection.realm.id),
+    (missionId) => dispatch({ id: null, missionId, type: "thread" }),
+  );
+  // The sheet's first row makes a realm, a quest in the chosen realm, or an errand of the chosen quest.
+  const create = () => {
+    if (chooser === "realm") {
+      setChooser(null);
+      setNamingRealm(true);
+    } else if (chooser === "quest") void quest.start();
+    else if (selection.quest !== null) {
+      setChooser(null);
+      dispatch({ id: null, missionId: selection.quest, type: "thread" });
+      dispatch({ isOpen: true, type: "errandStarter" });
+    }
   };
   // The phone's Back goes to the screen before, and leaves the app only from the Chronicle.
   const backRef = useRef({ chooser, details, dispatch, location, selection, showsDetails });
@@ -175,12 +196,23 @@ export function NarrowShell({
             {isBarShown && chooser !== null && (
               <PhoneChooser
                 choices={choices}
+                creation={creationOf(chooser, selection, questDetail?.mission.title ?? null)}
+                failure={chooser === "quest" ? quest.failure : null}
                 onChoose={choose}
                 onClose={() => setChooser(null)}
+                onCreate={create}
                 title={choiceTitleOf(chooser, selection, questDetail?.mission.title ?? null)}
               />
             )}
           </View>
+          {isNamingRealm && (
+            <NewRealmModal
+              client={client}
+              initial={{ name: "", path: "" }}
+              isFolderRequired={false}
+              onCancel={() => setNamingRealm(false)}
+            />
+          )}
           <SideMenu
             isOpen={location.isMenuOpen}
             onClose={() => dispatch({ isOpen: false, type: "menu" })}
