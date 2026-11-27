@@ -2,7 +2,7 @@ import type { MissionState, ThreadState } from "@outlore/contracts";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { Emblem, type EmblemName } from "../foundation/emblems";
+import { crossedSwordsPaths, Emblem, type EmblemName } from "../foundation/emblems";
 import { useIslandFrame } from "../foundation/islands";
 import { colors, fontSizes, radii, stateLabels, stateTones } from "../foundation/theme";
 import { ChipIcon } from "../ui/chips";
@@ -146,8 +146,9 @@ function QuestsMark() {
       viewBox="0 0 24 24"
       width={16}
     >
-      <Path d="M7 15L18 4h2v2L9 17M5 13l6 6M7 17l-3 3" />
-      <Path d="M10.5 8.5L6 4H4v2l4.5 4.5M19 13l-6 6M17 17l3 3" />
+      {crossedSwordsPaths.map((path) => (
+        <Path d={path} key={path} />
+      ))}
     </Svg>
   );
 }
